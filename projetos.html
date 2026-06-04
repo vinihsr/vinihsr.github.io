@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projetos | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="artigos.html">Artigos</a></li>
+                    <li><a href="projetos.html" class="active">Projetos</a></li>
+                    <li><a href="contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        <h2 style="font-size: 2.2rem;">Projetos</h2>
+        <p style="opacity: 0.7; margin-bottom: 32px;">Repositório das soluções que desenvolvo unindo Engenharia de Software e Arquitetura de Dados.</p>
+        
+        <div class="grid">
+            
+            <a href="projetos/hyper_rent.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+                <div class="article-meta" style="margin-bottom: 12px;">EM DESENVOLVIMENTO // FULLSTACK // DATA ENGINEERING</div>
+                <h3 style="margin-bottom: 16px;">Hyper-Rent: Plataforma de Aluguel e API de Dados</h3>
+                <p style="opacity: 0.85; font-size: 1.05rem; line-height: 1.6;">
+                    Sistema web completo para aluguel de veículos focado em integração de dados. Conta com um painel administrativo para geração de API Keys, visando a extração segura de métricas pré-analisadas.
+                </p>
+            </a>
+
+            </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

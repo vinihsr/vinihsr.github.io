@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyper-Rent | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">NODE.JS // REACT // NGINX // API REST</div>
+                <h1 style="font-size: 2.8rem;">Hyper-Rent</h1>
+                <p style="opacity: 0.7;">Plataforma de aluguel de carros focada na distribuição de dados analíticos via API.</p>
+            </div>
+
+            <p>O <strong>Hyper-Rent</strong> é um sistema de gerenciamento de aluguel de veículos desenhado para atuar como uma fonte de extração de dados (Data Source). Além do portal transacional para clientes, a aplicação conta com um painel administrativo voltado para a governança e distribuição de métricas via integrações seguras.</p>
+
+            <h3>Arquitetura e Stack Tecnológica</h3>
+            <p>A aplicação segue um modelo modular com proxy reverso para balanceamento e isolamento de rotas:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code>Hyper-Rent/
+├── client/           # Interface (React)
+├── server/           # Backend API (Express / Node.js)
+├── nginx/            # Proxy Reverso e Gateway (Nginx)
+└── package-lock.json</code></pre>
+            </div>
+
+            <h3>Módulos Principais (Data Engineering)</h3>
+            <ul>
+                <li><strong>Gestão de API Keys:</strong> Motor interno de criação, permissão e revogação de chaves criptografadas para acesso seguro aos endpoints por parceiros externos ou pipelines de extração (ETL/ELT).</li>
+                <li><strong>Delivery de Dados Agregados:</strong> Endpoints projetados para fornecer dados pré-processados e sumarizados (ex: taxa de ocupação, carros por ano/modelo), mitigando a carga analítica no banco de dados operacional.</li>
+                <li><strong>Filtro de Compliance (LGPD):</strong> Implementação de regras de <em>opt-in</em> integradas aos Termos e Condições (T&C). A API restringe programaticamente o retorno de dados, expondo apenas registros transacionais de clientes que autorizaram o uso para fins analíticos.</li>
+            </ul>
+
+            <blockquote style="text-align: center; font-weight: bold; background-color: transparent; border-left: none;">
+                [ Status Atual: Em Desenvolvimento ]
+            </blockquote>
+
+            <div style="text-align: center; margin: 24px;">
+                <a href="https://github.com/vinihsr/Hyper-Rent" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar Repositório
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html> 

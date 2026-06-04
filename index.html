@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home | Meu Portfólio</title>
+
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~$</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="index.html" class="active">Home</a></li>
+                    <li><a href="artigos.html">Artigos</a></li>
+                    <li><a href="projetos.html">Projetos</a></li>
+                    <li><a href="contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>            
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content hero" style="display: flex; flex-direction: column; justify-content: center; min-height: 50vh; text-align: left;">
+        <h1 style="font-size: 3.5rem; margin-bottom: 16px;">Vinicius Henrique</h1>
+        <p style="font-size: 1.15rem; max-width: 750px; margin-bottom: 5%; opacity: 0.85; line-height: 1.7;">
+            Engenheiro de Dados & DBA generalista. Com foco em infraestrutura e melhorias de performance.</p>
+        </p>
+        <div style="display: flex; gap: 10px;">
+            <a href="projetos.html" class="btn">Meus Projetos</a>
+            <a href="artigos.html" class="btn btn-secondary">Artigos</a>
+        </div>
+
+        <p style="padding-top: 10%;">Abaixo algumas das tecnologias em que possuo experiência:</p>
+
+        <div class="tech-carousel">
+            <div class="carousel-track">
+                
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:linux"></span>
+                    <span>Linux</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:microsoftsqlserver"></span>
+                    <span>SQL Server</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:postgresql"></span>
+                    <span>PostgreSQL</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:mysql"></span>
+                    <span>MySQL</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:python"></span>
+                    <span>Python</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:docker"></span>
+                    <span>Docker</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:amazonaws"></span>
+                    <span>AWS</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:microsoftazure"></span>
+                    <span>Azure</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:apachespark"></span>
+                    <span>Spark</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:dbt"></span>
+                    <span>dbt</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:apacheairflow"></span>
+                    <span>Airflow</span>
+                </div>
+
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:linux"></span>
+                    <span>Linux</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:microsoftsqlserver"></span>
+                    <span>SQL Server</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:postgresql"></span>
+                    <span>PostgreSQL</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:mysql"></span>
+                    <span>MySQL</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:python"></span>
+                    <span>Python</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:docker"></span>
+                    <span>Docker</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:amazonaws"></span>
+                    <span>AWS</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:microsoftazure"></span>
+                    <span>Azure</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:apachespark"></span>
+                    <span>Spark</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:dbt"></span>
+                    <span>dbt</span>
+                </div>
+                <div class="tech-box">
+                    <span class="iconify" data-icon="simple-icons:apacheairflow"></span>
+                    <span>Airflow</span>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

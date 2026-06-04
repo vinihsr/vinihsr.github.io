@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAL x .ldf | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">BANCO DE DADOS // SQL SERVER // POSTGRESQL</div>
+                <h1 style="font-size: 3.5rem;">WAL x .ldf</h1>
+            </div>
+
+            <p>Esse artigo servirá de guia prático e teórico em relação ao gerenciamento do log nos sgbd's e postgresql. Que apesar de soar semelhante, seguem bases completamente diferentes.</p>
+
+            <h2>Sabendo disso, vamos começar pelo SQL Server e os arquivos .ldf:</h2>
+            <p>Apesar do PostgreSQL chamar o arquivo fisicamente de WAL, esse é o nome dado ao conceito, que também é utilizado nos arquivos de log (.ldf). WAL, ou Write-Ahead Logging, siginifica que qualquer modificação de dados ou estrutura é gravada primeiramente no log de transação do disco, antes mesmo de qualquer página de dados ser gravada no arquuivo de dados (.mdf). Isso serve, também, para casos onde há uma queda inesperada do banco, o SQL Server lê o log de transação na inicialização e refaz (redo) ou desfaz (undo) as transações, visando cumprir com o "C" do conceito ACID, ou seja, conscistência.</p>
+            
+            <p>Seguindo a premissa do mecanismo do banco de dados, temos algumas especificações no SQL Server, como os VLF's.</p>
+            
+            <p>VLF ou Virtual Log Files, teórica e resumidamente, se trata de partições lógicas dentro do arquivo de log, responsáveis pelo controle transacional a um nível mais granular. Funciona de forma circular, preenchendo o VLF 1, VLF 2, VLF 3 e assim for diante, até o último. Após o último, se o primeiro já estiver inativo (transação consolidada), ele sobreescreve o VLF 1.</p>
+            
+            <blockquote>
+                Fato curioso: Uma má gestão do autogrowth, pode gerar fragmentação dos VLF's, criando milhares de VLF's por arquivo, destruindo a performance de recuperação (recovery) e degradando operações de escrita.
+            </blockquote>
+
+            <p>Além dessas partições lógicas, possuímos os modelos de recuperação (recovery model):</p>
+            <p>O recovery model gerencia e define como o crescimento do log irá acontecer, além de outros conceitos relacionados a HADR. Para explicar do que se trata, nada melhor do que citar as principais opções (as comumente utilizadas):</p>
+
+            <ul>
+                <li><strong>SIMPLE:</strong> Transações finalizadas são marcadas como inativas após um CHECKPOINT. O log é truncado (termo utilizado para simbolizar que acontece um comando TRUNCATE) e reutiliza o espaço. Faz com que o log não cresça indefinidamente, mas perde a possibilidade de um recovery point-in-time.</li>
+                <li><strong>FULL:</strong> Absolutamente tudo é logado. Um VLF só é marcado para ser reutilizados após um backup de log. Se ninguém realizar o backup de log, o ciclo circular é quebrado, e assim pode chegar a gerar o temido erro 9002, causando a parada do banco por lotar o disco.</li>
+            </ul>
+
+            <p>Além disso, possuímos um conceito primordial: O LSN (Log Sequence Number) que, de forma bem direta, funciona como um localizador para o seu banco de dados.</p>
+            <p>Independentemente do motor, todo registro que entra no log ganha esse número de série. É isso que garante que as transações sejam reproduzidas exatamente na ordem em que aconteceram em caso de uma falha.</p>
+            
+            <p>No SQL Server, se parace com isso: <code>00000032:0000012a:0001</code></p>
+            <p>Trẽs blocos que significam: Id do VLF, deslocamento dentro do bloco do log e slot da transação.</p>
+            
+            <p>O conceito por traz dos arquivos de log é complexo e cheio de casos interessantes. Que será citado em outros artigos focados 100% nesses casos, já que os mesmos, por si só, são assuntos longos e ricos em conteúdo.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>após o overview relacionado aos arquivos de log do SQL Server, podemos partir para WAL do sistema de gerenciamento de banco de dados: PostgreSQL.</h2>
+            <p>Como dito no início, WAL é o nome dado ao conceito, mas no postgres, também nomeia o arquivo. Ou melhor, o diretório dos arquivos.</p>
+
+            <h3>Vamos passar primeiramente pela arquitetura física:</h3>
+            <p>Enquanto o SQL Server gerencia apenas um único arquivo (exemplo.ldf) e o divide logicamente em partições. O postgres possui um diretório responsável por isso, chamado pg_wal. (ou, em versões antigas, pg_xlog.)</p>
+            
+            <p>Dentro do diretório, o postgres cria diversos arquivos físicos com nomenclatura padrão hexadecimal (000000010000000000000001). Por padrão, cada arquivo desse possui 16MB e é chamado de Segmento de WAL.</p>
+            
+            <p>O ciclo circular dos VLF's do SQL Server ocorrem aqui quase da mesma maneira, mudando apenas o fato de que não se trata de partições de um único arquivo, e sim arquivos de um diretório. Ou seja, com o decorrer das gravações das transações, os arquivos são reciclados e renomeados.</p>
+
+            <h3>Recovery model no postgres e seu paradigma:</h3>
+            <p>Aqui, não temos FULL ou SIMPLE, e isso é o que o DBA SQL Server precisa entender para que não caia no susto de tentar alterar o recovery model da base pela interface gráfica, pois o gerenciamento desse recurso, assim como da maioria, é feito de forma global através do arquivo de configuração: postgresql.conf.</p>
+
+            <p>wal_level: Define o quanto de informação vai ser escrita no WAL, podendo ser minimal, replica e logical:</p>
+            <ul>
+                <li><strong>minimal:</strong> O mínimo para o banco não corromper em um crash.</li>
+                <li><strong>replica:</strong> O suficiente para Point-in-time Recovery e replicação física.</li>
+                <li><strong>logical:</strong> O suficiente para replicação lógica.</li>
+            </ul>
+
+            <p>O equivalente ao FULL do SQL Server, você precisa ativar o archive_mode, isso faz com que o postgres execute um script (o archive_command) toda vez que um arquivo de log (16MB) encha, o copiando para um storage externo. Pois, caso contrário, estando ali, seria reciclado, cedo ou tarde.</p>
+
+            <p>O LSN (Logical Sequencial Number) no postgres não é só uma sequẽncia lógica, mas soa mais como um ponteiro de posição física (byte offset de 64 bits) e marca exatamente qual byte do arquivo a transação foi gravada.</p>
+            <p>Se parece com isso: <code>16/B374D848</code></p>
+            
+            <p>Além disso o postgres tem um tipo de dado nativo, apenas para lidar com isso, o pg_lsn.</p>
+
+            <p>O comando CHECKPOINT foi citado anteriormente no recovery SIMPLE do SQL Server, mas no postgres ele também acontece, e é um evento crucial para a saúde do WAL. Pois o mesmo, é responsável por definir quando as páginas em memória (RAM, Shared Buffers, Cache, etc.) e as passa para o disco. O que, de maneira mais demonstratativa, ocorre como um caixa de supermercado, onde o CHECKPOINT é o operador de caixa, os arquivos seriam os clientes e as compras sendo os dados.</p>
+
+            <p>Ok, sabendo disso, o que pode levar o WAL a afetar o disco? No SQL Server, citamos alguns casos onde o disco pode ser afetado por falta de algumas configurações. Aqui, o que pode fazer o disco ser afetado, é o mal uso das configurações aplicadas. Sendo duas delas:</p>
+
+            <ul>
+                <li><strong>Falha no archiving:</strong> Caso o archive_command não funcione, ao contrário do que você pode estar pensando, o postgres não deleta ou perde os arquivos, eles o mantém localmente. E como nesse caso não há vazão, os log seguem se acumulando, o que om excesso de erros, pode afetar o disco.</li>
+                <li><strong>wal_keep_size muito alto:</strong> Em resumo, esse parâmetro define o quanto em GB de WAL o banco deve guardar por segurança. Mal configurado, pode ocupar bastante espaço e até mesmo topar.</li>
+            </ul>
+
+            <p>Há exemplos relacionados a replicação que envolver o WAL, não só no postgres, mas o conteúdo abrange diversos temas complexos relacionados a recuperação de desastres e alta disponibilidade.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>Para finalizar, o que importa além de tudo para nós DBA's, as queries. Começando pelo SQL Server:</h2>
+            <p>Se quiser verificar o tamanho do .ldf de cada base e o percentual de uso, você pode usar o:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">DBCC SQLPERF(LOGSPACE);</code></pre>
+            </div>
+
+            <p>Já essa query explica quem pode ser o ofensor do aumento desenfreado do log:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT
+name AS DatabaseName,
+recovery_model_desc AS RecoveryModel,
+log_reuse_wait_desc AS MotivoRetencaoLog
+FROM sys.databases
+WHERE database_id > 4; -- Ignora as bases de sistema</code></pre>
+            </div>
+            
+            <p>Dica: Se o resultado for LOG_BACKUP, o banco está em modelo FULL esperando o backup de log. Se for ACTIVE_TRANSACTION, alguém abriu uma transação, mas ainda não ocorreu o COMMIT. Além de outros reuse_waits.</p>
+
+            <p>Se quiser monitorar os VLF's, saber quantos tem no banco atual, para entender o nível de fragmentação interna (e caso o seu servidor possua SQL Server 2017 ou superior), use isso:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT
+DB_NAME(database_id) AS DatabaseName,
+COUNT(vlf_sequence_number) AS Quantidade_VLFs
+FROM sys.dm_db_log_info(DB_ID())
+GROUP BY database_id;</code></pre>
+            </div>
+
+            <p>Resumidamente e de forma básica, isso servirá para suas primeiras impressões. Agora podemos partir para o postgres:</p>
+
+            <p>Se sua versão do postgres for 10+, você não precisar verificar o diretório da pasta de logs via terminal, basta rodar isto e listar:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT
+COUNT(*) AS quantidade_arquivos_wal,
+SUM(size) / 1024 / 1024 AS tamanho_total_mb
+FROM pg_ls_waldir();</code></pre>
+            </div>
+
+            <p>Para descobrir o segmento de WAL atual, no exato milisegundo:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT pg_walfile_name(pg_current_wal_lsn()) AS arquivo_wal_atual;</code></pre>
+            </div>
+
+            <p>Como o CHECKPOINT só limpa o WAL do que já foi consolidado, longas transações podem segurar o WAL e inflar o disco, para verificá-las:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT
+pid,
+usename AS usuario,
+client_addr AS ip_origem,
+now() - xact_start AS tempo_transacao,
+query AS comando_executado
+FROM pg_stat_activity
+WHERE state = 'active'
+AND xact_start < now() - INTERVAL '5 minutes'
+ORDER BY tempo_transacao DESC;</code></pre>
+            </div>
+
+            <p>Essas são as principais diferenças e semelhanças entre o conceito de arquivo de log no PostgreSQL x SQL Server. Mais detalhes sobre temas citados aqui, serão citados em outros artigos. Obrigado por ler até aqui e bons estudos!</p>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy;2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>

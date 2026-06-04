@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artigos | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~$</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="artigos.html" class="active">Artigos</a></li>
+                    <li><a href="projetos.html">Projetos</a></li>
+                    <li><a href="contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        <h2 style="font-size: 2.2rem;">Artigos Técnicos</h2>
+        <p style="opacity: 0.7; margin-bottom: 32px;">Compartilhando aprendizados sobre Engenharia de Dados, otimização de bancos de dados e automação de pipelines.</p>
+        
+        <div class="article-list">
+            
+            <a href="artigos/wal_vs_ldf.html" class="article-item">
+                <div class="article-meta">2026 // BANCO DE DADOS // SQL SERVER // POSTGRESQL</div>
+                <h3>WAL x .ldf</h3>
+                <p>Um guia prático e teórico em relação ao gerenciamento do log nos SGBDs e PostgreSQL. Que apesar de soar semelhante, seguem bases completamente diferentes.</p>
+            </a>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy;2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

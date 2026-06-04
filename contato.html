@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contato | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .contact-channels {
+            max-width: 600px;
+            margin: 40px auto 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 500;   
+            transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
+        }
+
+        @media (min-width: 769px) {
+            .contact-item:hover {
+                transform: translateX(5px);
+                border-color: var(--primary-color);
+                color: var(--primary-color);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .contact-item:active {
+                transform: scale(0.98); 
+                border-color: var(--title-color);
+                background-color: var(--bg-light);
+            }
+        }
+
+        .contact-label {
+            font-size: 1.1rem;
+            color: var(--title-color);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~$</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="artigos.html">Artigos</a></li>
+                    <li><a href="projetos.html">Projetos</a></li>
+                    <li><a href="contato.html" class="active">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        <h2 class="text-center" style="font-size: 2.2rem;">Contato</h2>
+        <p class="text-center">Estou disponível para novas oportunidades e conexões profissionais. Sinta-se à vontade para se conectar comigo através de qualquer um dos canais abaixo:</p>
+        
+        <div class="contact-channels">
+            <a href="mailto:vinicius.m1821@gmail.com" class="contact-item">
+                <span class="contact-label">📧 E-mail</span>
+                <span>vinicius.m1821@gmail.com</span>
+            </a>
+            <a href="https://www.linkedin.com/in/vinicius-henrique-1a016524a/" target="_blank" class="contact-item">
+                <span class="contact-label">💼 LinkedIn</span>
+                <span>/in/vinicius-henrique</span>
+            </a>
+            <a href="https://github.com/vinihsr" target="_blank" class="contact-item">
+                <span class="contact-label">💻 GitHub</span>
+                <span>github.com/vinihsr</span>
+            </a>
+            <div class="contact-item" style="cursor: default; transform: none; border-color: var(--border-color);">
+                <span class="contact-label">📱 Telefone</span>
+                <span style="color: var(--text-color);">(12) 98871-4106</span>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
