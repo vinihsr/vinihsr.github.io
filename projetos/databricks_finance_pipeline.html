@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Databricks Finance Pipeline | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">DATABRICKS // PYSPARK // DELTA LAKE // SQL</div>
+                <h1 style="font-size: 2.8rem;">Databricks Finance Pipeline</h1>
+                <p style="opacity: 0.7;">Pipeline end-to-end consumindo dados reais de ações bancárias, fundamentado na Arquitetura Medalhão.</p>
+            </div>
+
+            <p>O <strong>Databricks Finance Pipeline</strong> é um projeto de engenharia de dados focado em ingestão, processamento e modelagem analítica estruturada. Ele consome o histórico de 2 anos de ações dos maiores bancos (JPM, BAC, GS, C, WFC) através da API <code>yfinance</code>, processando todo o ciclo de vida do dado dentro do ecossistema Databricks.</p>
+
+            <h3>Arquitetura Medalhão</h3>
+            <p>O fluxo de dados foi desenhado para isolar responsabilidades, garantindo que o dado bruto seja preservado enquanto as camadas subsequentes aplicam regras de qualidade e negócio:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code>yfinance API → Bronze (Raw) → Silver (Clean) → Gold (KPIs) → Dashboard</code></pre>
+            </div>
+
+            <ul>
+                <li><strong>Camada Bronze (Ingestão):</strong> Download e armazenamento dos dados brutos exatamente como fornecidos pela fonte, servindo como histórico imutável.</li>
+                <li><strong>Camada Silver (Transformação):</strong> Limpeza, <em>casting</em> de tipos e validação de dados utilizando o poder de processamento distribuído do PySpark.</li>
+                <li><strong>Camada Gold (Negócios):</strong> Engenharia de <em>features</em> e métricas financeiras consolidadas, incluindo cálculo de percentual de retorno diário, média móvel de 7 dias e variação de faixa de preço.</li>
+            </ul>
+
+            <h3>Estrutura de Notebooks</h3>
+            <p>A orquestração local (Databricks Free Edition) é dividida nas seguintes rotinas independentes:</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code>Notebooks/
+├── 01_bronze_ingest.py    # Extração de dados via yfinance e persistência
+├── 02_silver_clean.py     # Data cleaning e schema validation
+├── 03_gold_transform.py   # Cálculos de KPIs financeiros
+└── 04_analyze.py          # Queries analíticas (Databricks SQL) e Dashboard</code></pre>
+            </div>
+
+            <h3>Camada de Consumo</h3>
+            <p>A ponta final do pipeline entrega os dados modelados (Delta Tables) diretamente para o Databricks SQL, viabilizando a visualização de tendências do mercado financeiro por meio de dashboards integrados.</p>
+
+            <div style="text-align: center; margin-top: 48px;">
+                <a href="https://github.com/vinihsr/e-commerce_pyspark_pipeline" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar Repositório
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>

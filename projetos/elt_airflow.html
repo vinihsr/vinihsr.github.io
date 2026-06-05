@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELT Airflow Pipeline | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">AIRFLOW // PYTHON // DBT // POSTGRESQL // DOCKER</div>
+                <h1 style="font-size: 2.8rem;">ELT Airflow Pipeline</h1>
+                <p style="opacity: 0.7;">Orquestração de extração via API REST, carga em banco relacional e modelagem de dados utilizando dbt.</p>
+            </div>
+
+            <p>Este projeto consolida um fluxo completo de Engenharia de Dados focado no paradigma <strong>ELT (Extract, Load, Transform)</strong>. O diferencial desta arquitetura é a integração de ponta a ponta com um Data Source proprietário (desenvolvido no projeto <em>Hyper-Rent</em>), demonstrando domínio tanto na engenharia de software que serve o dado, quanto na infraestrutura analítica que o consome.</p>
+
+            <h3>Arquitetura de Redes Isoladas (Docker)</h3>
+            <p>Para simular um ambiente de produção real e seguro, a infraestrutura foi dividida em duas redes Docker distintas que se comunicam via proxy:</p>
+            
+            <ul>
+                <li><strong>Rede do Data Source:</strong> Hospeda a API REST (Node.js/Express) protegida por um Nginx operando como <em>Forward Proxy</em>.</li>
+                <li><strong>Rede do Data Pipeline (Airflow):</strong> Contém os <em>workers</em> de extração, o banco de dados analítico e o motor de transformação.</li>
+            </ul>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>O Fluxo ELT</h2>
+            
+            <h3>1. Extract (Python)</h3>
+            <p>O Apache Airflow orquestra um script em Python responsável por bater no endpoint seguro da API (<code>http://localhost/api/admin/cars?apikey=</code>). O uso de chaves de API garante a extração de dados pré-analisados de forma governada, respeitando os contratos de dados da aplicação de origem.</p>
+
+            <h3>2. Load (PostgreSQL)</h3>
+            <p>Os dados brutos coletados em formato JSON são carregados diretamente, sem manipulações pesadas em memória, para a camada <em>Raw/Staging</em> de um banco de dados PostgreSQL isolado. Isso garante que o Data Lake/Warehouse tenha um histórico não corrompido do que foi ingerido.</p>
+
+            <h3>3. Transform (dbt)</h3>
+            <p>Com os dados já residindo no PostgreSQL, o Airflow dispara os modelos do <strong>dbt (Data Build Tool)</strong>. O dbt executa o processamento pesado de limpeza, padronização e estruturação dimensional utilizando o motor de SQL nativo do próprio Postgres. Isso finaliza a transição do dado bruto para um modelo analítico pronto para consumo (Views/Marts).</p>
+
+            <div style="text-align: center; margin-top: 48px;">
+                <a href="https://github.com/vinihsr/elt_airflow" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar Repositório
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>

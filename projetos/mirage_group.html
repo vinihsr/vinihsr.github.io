@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jornada Mirage Group | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        /* Estilos específicos para a Timeline Acadêmica */
+        .semester-block {
+            border-left: 3px solid var(--primary-color);
+            padding-left: 24px;
+            margin-bottom: 56px;
+            position: relative;
+        }
+        .semester-block::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: var(--bg-color);
+            border: 3px solid var(--primary-color);
+            border-radius: 50%;
+            left: -11px; /* Centraliza a bolinha na borda */
+            top: 0;
+        }
+        .semester-tag {
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">FATEC SJC // APRENDIZADO POR PROJETOS INTEGRADOS (API)</div>
+                <h1 style="font-size: 2.8rem;">Mirage Group</h1>
+                <p style="opacity: 0.7;">Um compilado de soluções reais para empresas do mercado.</p>
+            </div>
+
+            <p>Minha experiência prática de desenvolvimento e engenharia de software foi forjada na FATEC através de APIs (Aprendizado por Projetos Integrados). A cada semestre, fomos desafiados a solucionar problemas reais de grandes empresas do mercado de tecnologia, assumindo papéis de desenvolvimento e gestão ágil.</p>
+            <p>Abaixo, documento a progressão técnica da equipe <strong>Mirage Group</strong> ao longo de 6 semestres.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <div class="semester-block">
+                <span class="semester-tag">1º SEMESTRE (AGO/2022) // FATEC SJC</span>
+                <h3>Gestão de Manutenção de Laboratórios</h3>
+                <p><strong>Desafio:</strong> Mapear e facilitar a abertura de chamados técnicos para identificar e consertar computadores debilitados nos laboratórios da instituição.</p>
+                <p><strong>Solução:</strong> Aplicação web interativa com <em>drag and drop</em> para reorganizar visualmente as máquinas das salas e gerenciar o estado de manutenção.</p>
+                <ul>
+                    <li><strong>Stack:</strong> Python (Flask), MySQL, HTML5, CSS e JavaScript.</li>
+                    <li><strong>Minha Atribuição:</strong> Construção e estilização das telas (foco em responsividade), além de contribuir ativamente na documentação que baseou a lógica do drag-and-drop.</li>
+                </ul>
+            </div>
+
+            <div class="semester-block">
+                <span class="semester-tag">2º SEMESTRE (FEV/2023) // FATEC SJC</span>
+                <h3>Gerenciamento de Turmas e Estatísticas Escolar</h3>
+                <p><strong>Desafio:</strong> Desenvolver um sistema desktop para substituir um portal instável, permitindo que os professores gerenciassem turmas, atividades, notas e acompanhassem o desempenho estatístico de forma eficiente.</p>
+                <ul>
+                    <li><strong>Stack:</strong> Java, Java Swing e MySQL.</li>
+                    <li><strong>Minha Atribuição:</strong> Protótipo e desenvolvimento da interface gráfica utilizando Swing e participação na construção da lógica da base estatística. Liderança ativa para contornar desafios de compilação da equipe.</li>
+                </ul>
+            </div>
+
+            <div class="semester-block">
+                <span class="semester-tag">3º SEMESTRE (AGO/2023) // IONIC HEALTH</span>
+                <h3>Rastreio de Processos Regulatórios Empresariais</h3>
+                <p><strong>Desafio:</strong> Criar uma plataforma web unificada para gerenciar, documentar e monitorar evidências e etapas de processos regulatórios burocráticos de uma empresa focada em engenharia clínica.</p>
+                <ul>
+                    <li><strong>Stack:</strong> Node.js, TypeScript, React e MySQL.</li>
+                    <li><strong>Minha Atribuição:</strong> Criação de telas críticas da aplicação (como login/home) e estruturação do feedback contínuo para guiar a tomada de decisões arquiteturais do projeto.</li>
+                </ul>
+            </div>
+
+            <div class="semester-block">
+                <span class="semester-tag">4º SEMESTRE (FEV/2024) // SIATT</span>
+                <h3>Plataforma Integrada de Agendamentos (Híbrido)</h3>
+                <p><strong>Desafio:</strong> Solucionar a desorganização de equipes em crescimento no contexto pós-pandemia, coordenando agendamentos que respeitassem diferentes formatos (presencial, online, híbrido) e disponibilidades.</p>
+                <ul>
+                    <li><strong>Stack:</strong> Node.js, TypeScript, React e MySQL.</li>
+                    <li><strong>Minha Atribuição:</strong> Idealização do MVP, quebra de tarefas (tasks) e desenvolvimento visual do sistema de cadastro de reuniões.</li>
+                </ul>
+            </div>
+
+            <div class="semester-block">
+                <span class="semester-tag">5º SEMESTRE (AGO/2024) // KERSYS</span>
+                <h3>Monitoramento Climático Georreferenciado</h3>
+                <p><strong>Desafio:</strong> Desenvolver uma solução mobile para que produtores rurais monitorassem condições climáticas extremas em suas áreas específicas de cultivo, emitindo notificações de impacto.</p>
+                <ul>
+                    <li><strong>Stack:</strong> React Native, Node.js, Firebase (NoSQL) e MySQL.</li>
+                    <li><strong>Minha Atribuição: Scrum Master.</strong> Gerenciei os ritos ágeis utilizando o Jira Software. Priorizei o backlog, assegurei prazos e blindei a equipe de bloqueios trabalhando diretamente com o Product Owner.</li>
+                </ul>
+            </div>
+
+            <div class="semester-block">
+                <span class="semester-tag">6º SEMESTRE (FEV/2025) // DOM ROCK</span>
+                <h3>Plataforma RLHF: Retreinamento de LLMs</h3>
+                <p><strong>Desafio:</strong> Aplicação web para avaliar respostas de Inteligência Artificial em tempo real. O sistema envia prompts para duas LLMs, recebe o retorno via streaming e coleta o feedback humano (RLHF) para retreinar o modelo de cuidado especializado para pacientes com Alzheimer.</p>
+                <ul>
+                    <li><strong>Stack:</strong> Vue.js, Spring Boot, FastAPI, LangChain, Groq (Qwen/DeepSeek), MongoDB e ChromaDB.</li>
+                    <li><strong>Minha Atribuição (Desenvolvedor):</strong> 
+                        <br>- Definição arquitetural do MongoDB voltada para a fluidez do RLHF. 
+                        <br>- Implementação de <em>Streaming Response</em> para reduzir a latência das LLMs. 
+                        <br>- Construção de rotas integradas para prover dados aos gráficos de performance e de comparação analítica.
+                    </li>
+                </ul>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <div style="text-align: center; margin-top: 48px;">
+                <p style="margin-bottom: 24px;">Você pode conferir o código fonte de cada um desses projetos acessando a organização oficial no GitHub.</p>
+                <a href="https://github.com/MirageGroup" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar GitHub Org
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>

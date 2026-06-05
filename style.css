@@ -208,13 +208,15 @@ header {
     cursor: pointer;
 }
 
-.article-item:hover {
+.article-item:hover, 
+.project-item:hover {
     transform: translateY(-4px); 
     border-color: var(--title-color); 
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.04); 
 }
 
-[data-theme="dark"] .article-item:hover {
+[data-theme="dark"] .article-item:hover, 
+[data-theme="dark"] .project-item:hover {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3); 
 }
 
@@ -247,6 +249,8 @@ header {
     text-decoration: none;
     color: inherit;
     display: block;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .contact-channels {
@@ -650,14 +654,18 @@ footer {
         border-color: #3f3f46;
     }
 
-    .article-item:hover {
+    .article-item:hover, 
+    .project-item:hover {
         transform: none;
         border-color: var(--border-color);
         box-shadow: none;
     }
-    [data-theme="dark"] .article-item:hover {
+    
+    [data-theme="dark"] .article-item:hover, 
+    [data-theme="dark"] .project-item:hover {
         box-shadow: none;
     }
+    
     .contact-item:hover {
         border-color: var(--border-color);
         color: var(--text-color);
@@ -666,6 +674,7 @@ footer {
     .tech-carousel:hover .carousel-track {
         animation-play-state: running;
     }
+    
     .tech-box:hover {
         border-color: var(--border-color);
         color: var(--text-color);
@@ -676,10 +685,16 @@ footer {
         transform: scale(0.98); 
         background-color: var(--primary-hover);
     }
-    .theme-btn:active, .copy-btn:active {
+    
+    .theme-btn:active, 
+    .copy-btn:active {
         background-color: var(--bg-light);
     }
-    .article-item:active, .contact-item:active, .tech-box:active {
+    
+    .article-item:active, 
+    .project-item:active, 
+    .contact-item:active, 
+    .tech-box:active {
         border-color: var(--title-color);
         background-color: var(--bg-light);
     }

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather ETL Pipeline | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">PYTHON // PANDAS // POSTGRESQL // DOCKER // ETL</div>
+                <h1 style="font-size: 2.8rem;">Weather ETL Pipeline</h1>
+                <p style="opacity: 0.7;">Automação de coleta, processamento e armazenamento de dados climáticos executada inteiramente em containers.</p>
+            </div>
+
+            <p>O <strong>Weather ETL Project</strong> foi desenvolvido para automatizar a coleta contínua de dados climáticos de diversas cidades e consolidá-los em um banco de dados relacional. Trata-se de um pipeline <strong>ETL (Extract, Transform, Load)</strong> completo, encapsulado nativamente dentro de containers Docker, eliminando a necessidade de qualquer instalação local de dependências além do próprio motor de virtualização.</p>
+
+            <h2>Mecânica do Pipeline</h2>
+            <ul>
+                <li><strong>Extract (Extração):</strong> O script lê uma lista de cidades pré-definidas a partir de um arquivo CSV e consome dados em tempo real através da <em>WeatherAPI</em>.</li>
+                <li><strong>Transform (Transformação):</strong> Utilizando a biblioteca Pandas, os dados em formato JSON são limpos e padronizados. Os nomes das colunas são ajustados para os padrões SQL e um <em>timestamp</em> de coleta é injetado em cada registro para garantir a rastreabilidade temporal.</li>
+                <li><strong>Load (Carga):</strong> Os dados processados são carregados e anexados à tabela final em um banco de dados PostgreSQL.</li>
+            </ul>
+
+            <h2>Detalhes Técnicos e Infraestrutura</h2>
+            <p>O projeto foi desenhado focando em resiliência e independência de serviços:</p>
+            <ul>
+                <li><strong>Python:</strong> Motor central de todas as lógicas de requisição (requests) e modelagem de dados (Pandas).</li>
+                <li><strong>Docker Compose:</strong> Orquestra a subida conjunta da aplicação (script) e do banco de dados como serviços isolados na mesma rede.</li>
+                <li><strong>PostgreSQL:</strong> Camada de armazenamento que retém o histórico climático confiável para análises futuras.</li>
+                <li><strong>Healthchecks (Docker):</strong> Ponto de segurança crucial. A execução do script em Python é programada para aguardar até que o container do PostgreSQL esteja com o status "Healthy" (totalmente pronto para receber conexões), prevenindo quebras e erros de <em>timeout</em> na inicialização.</li>
+            </ul>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>Como Executar Localmente</h2>
+            
+            <p>1. Crie um arquivo <code>.env</code> na raiz do projeto com as seguintes variáveis de ambiente:</p>
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash">WEATHER_API_KEY=sua_chave_aqui
+DATABASE_STRING=postgresql://postgres:vini@postgres:5432/etl</code></pre>
+            </div>
+            
+            <blockquote>
+                <strong>Nota:</strong> A chave de API pode ser gerada gratuitamente no portal da <a href="https://www.weatherapi.com/signup.aspx" target="_blank" style="color: var(--title-color);">WeatherAPI</a>. A string de conexão do banco já está ajustada para a rede do Docker, mas caso altere credenciais (como a senha), certifique-se de refletir as mudanças no arquivo <code>docker_compose.yml</code>.
+            </blockquote>
+
+            <p>2. Com o arquivo <code>.env</code> configurado, suba o ambiente completo executando:</p>
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash">docker compose -f Docker/docker_compose.yml up --build</code></pre>
+            </div>
+
+            <div style="text-align: center; margin-top: 48px;">
+                <a href="https://github.com/vinihsr/etl_project" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar Repositório
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>

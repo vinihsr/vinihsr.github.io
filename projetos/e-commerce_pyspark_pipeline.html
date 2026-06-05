@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Analytics Pipeline | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">AIRFLOW // PYSPARK // DBT // MINIO // DOCKER</div>
+                <h1 style="font-size: 2.8rem;">E-Commerce Analytics Pipeline</h1>
+                <p style="opacity: 0.7;">Orquestração de pipeline de dados automatizado utilizando uma Modern Data Stack rodando inteiramente em containers.</p>
+            </div>
+
+            <p>Este projeto consiste em um pipeline end-to-end de engenharia de dados que simula o fluxo completo de uma operação de e-commerce. A arquitetura foi desenvolvida para orquestrar desde a geração e ingestão de dados brutos (simulando registros "sujos") até a entrega de métricas limpas e modeladas em um banco de dados relacional (Serving Layer).</p>
+
+            <h3>Fluxo de Orquestração (Airflow DAG)</h3>
+            <p>O pipeline é executado em um cronograma diário totalmente automatizado pelo Apache Airflow, seguindo as etapas:</p>
+            <ol>
+                <li><strong>Ingestão (Raw):</strong> Geração de dados sintéticos de e-commerce (pedidos, eventos, produtos) e upload direto para o MinIO (Data Lake local compatível com S3).</li>
+                <li><strong>Processamento e Limpeza:</strong> Rotinas em PySpark leem os arquivos brutos, aplicam validações de schema e limpam dados intencionalmente corrompidos.</li>
+                <li><strong>Enriquecimento e Agregação:</strong> O Spark cruza (JOIN) as tabelas de pedidos com informações de produtos e calcula KPIs primários (ex: faturamento diário, top produtos e retenção).</li>
+                <li><strong>Carga no Data Warehouse:</strong> Os resultados agregados são ingeridos em um banco PostgreSQL.</li>
+                <li><strong>Modelagem Dimensional:</strong> O dbt (Data Build Tool) assume a transformação final, construindo as camadas <em>staging</em> e <em>marts</em> para disponibilizar as tabelas finais para consumo analítico.</li>
+            </ol>
+
+            <h3>Stack Tecnológica</h3>
+            <ul>
+                <li><strong>Apache Spark (PySpark):</strong> Limpeza de dados, enriquecimento e agregações pesadas.</li>
+                <li><strong>Apache Airflow:</strong> Agendamento, orquestração e paralelismo das tarefas.</li>
+                <li><strong>dbt (Data Build Tool):</strong> Transformação analítica e documentação no Data Warehouse.</li>
+                <li><strong>PostgreSQL:</strong> Camada de consumo (Serving Layer) para as tabelas finais.</li>
+                <li><strong>MinIO:</strong> Armazenamento de objetos (Local S3-compatible).</li>
+                <li><strong>Docker Compose:</strong> Provisionamento e isolamento de toda a infraestrutura local.</li>
+            </ul>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>DataOps: Execução e Deploy</h2>
+            <p>A infraestrutura é provisionada via Docker, garantindo reprodutibilidade. Abaixo estão os passos para inicializar a stack.</p>
+
+            <p>1. Crie os diretórios de persistência e ajuste permissões do Airflow:</p>
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash">mkdir -p logs/scheduler dags plugins data
+chmod -R 777 logs data dbt_project
+echo "AIRFLOW_UID=$(id -u)" >> .env</code></pre>
+            </div>
+
+            <p>2. Faça o download dos drivers (JARs) necessários para o Spark comunicar com o MinIO (S3) e PostgreSQL:</p>
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash">mkdir -p spark/jars
+wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.2/hadoop-aws-3.3.2.jar -P spark/jars/
+wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.901/aws-java-sdk-bundle-1.11.901.jar -P spark/jars/
+wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar -P spark/jars/</code></pre>
+            </div>
+
+            <p>3. Construa e inicie os containers (Acesse a interface do Airflow via <code>localhost:8080</code> e ative a DAG):</p>
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash">docker compose build
+docker compose up airflow-init
+docker compose up -d</code></pre>
+            </div>
+
+            <h3>Preparação para Nuvem (Cloud Readiness)</h3>
+            <p>O pipeline foi projetado visando portabilidade para ambientes cloud. Para migrar para a AWS, as alterações são mínimas e configuráveis via variáveis de ambiente, não exigindo reescrita no código PySpark:</p>
+            <ul>
+                <li>Substituir a URI do <code>MINIO_ENDPOINT</code> pelo endpoint da região do AWS S3.</li>
+                <li>Injetar as <em>Access Keys</em> do IAM da AWS.</li>
+                <li>Substituir a conexão local do PostgreSQL pelo endpoint de um banco AWS RDS.</li>
+            </ul>
+
+            <div style="text-align: center; margin-top: 48px;">
+                <a href="https://github.com/vinihsr/e-commerce_pyspark_pipeline" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar Repositório
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>

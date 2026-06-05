@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenith Health App | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <a href="../index.html" class="logo">root@vini:~#</a>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html">Artigos</a></li>
+                    <li><a href="../projetos.html" class="active">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../projetos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">TYPESCRIPT // LGPD // GOVERNANÇA DE DADOS</div>
+                <h1 style="font-size: 2.8rem;">Zenith App</h1>
+                <p style="opacity: 0.7;">Aplicativo clínico voltado à facilitação de diagnósticos, fundamentado em rigorosas políticas de privacidade e resiliência de dados.</p>
+            </div>
+
+            <p>O <strong>Zenith App</strong> é um projeto colaborativo desenvolvido para o setor de <em>Health Tech</em>. Seu objetivo principal é modernizar e facilitar o diagnóstico médico através da digitalização e do gerenciamento inteligente de <strong>anamneses</strong> clínicas.</p>
+            <p>Diferente de aplicações convencionais, o setor de saúde exige um tratamento de dados altamente sensível. Por isso, a arquitetura deste projeto foi desenhada com um forte viés de segurança, resiliência e conformidade jurídica.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>Segurança e Compliance (LGPD)</h2>
+            <p>O gerenciamento de dados de pacientes impôs desafios arquiteturais que foram solucionados aplicando os princípios da Lei Geral de Proteção de Dados (LGPD) diretamente na lógica do sistema:</p>
+            
+            <ul>
+                <li><strong>Termos e Condições (T&C):</strong> Implementação de fluxos de aceite explícito, garantindo que a coleta e o uso de dados de saúde ocorram apenas mediante consentimento rastreável.</li>
+                <li><strong>Direito ao Esquecimento (Exclusão Total):</strong> Desenvolvimento de rotinas de <em>Hard Delete</em>, assegurando que, mediante solicitação, os dados do usuário e seus prontuários sejam criptograficamente apagados e permanentemente removidos do banco de dados, sem deixar resíduos transacionais.</li>
+            </ul>
+
+            <h2>Resiliência e Governança de Dados</h2>
+            <p>Como informações médicas são críticas e não podem ser perdidas, o banco de dados da aplicação foi estruturado com políticas preventivas:</p>
+            
+            <ul>
+                <li><strong>Backup & Restore:</strong> Implementação de rotinas de contingência, garantindo snapshots periódicos e testes de restauração. Essa política assegura que a aplicação possua um tempo de recuperação (RTO/RPO) aceitável em cenários de falha, mantendo a integridade do histórico clínico.</li>
+            </ul>
+
+            <div style="text-align: center; margin-top: 48px;">
+                <p style="margin-bottom: 24px;">Este foi um projeto desenvolvido em equipe, consolidando práticas de versionamento e metodologias ágeis.</p>
+                <a href="https://github.com/zenith-health/zenith-app" target="_blank" class="btn">
+                    <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+                    Acessar Repositório
+                </a>
+            </div>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
