@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temp Table x Table Variable | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">BANCO DE DADOS // SQL SERVER // T-SQL // PERFORMANCE</div>
+                <h1 style="font-size: 3.5rem;">Temp Table x Table Variable</h1>
+            </div>
+
+            <p>Este artigo servirá de guia prático e teórico em relação à escolha da estrutura de dados temporários no SQL Server. Apesar de muitos desenvolvedores usarem indistintamente Tabelas Temporárias (#table) e Variáveis de Tabela (@table), elas seguem bases e comportamentos completamente diferentes por baixo dos panos.</p>
+
+            <h2>Sabendo disso, vamos começar pelas Tabelas Temporárias (#table):</h2>
+            <p>Uma tabela temporária é uma estrutura de dados real, criada fisicamente no banco de dados tempdb. Assim como as tabelas comuns, o SQL Server consegue gerenciar e entender o que está acontecendo com os dados ali dentro. Ela existe no disco (ou cache de buffer) e permite manipular volumes massivos de informações.</p>
+            
+            <p>Seguindo a premissa do mecanismo do banco de dados, temos algumas especificações que dão uma vantagem absurda para as #tables, como as estatísticas e histogramas.</p>
+            
+            <p>Estatísticas, teórica e resumidamente, informam ao otimizador do SQL Server a quantidade e a distribuição dos dados (os chamados histogramas). O otimizador tem acesso a esses dados, lê tudo e, com isso, consegue montar o melhor plano de execução possível. Além disso, você pode criar índices permanentes nelas e o recurso de paralelização de CPU funciona perfeitamente.</p>
+            
+            <blockquote>
+                Fato curioso: O comando OPTION (RECOMPILE) funciona perfeitamente aqui, permitindo que o banco reotimize a query baseando-se nos dados reais já conhecidos antes de executá-la.
+            </blockquote>
+
+            <p>Mas, nem tudo é perfeito. O uso de temp tables gera um pequeno overhead de I/O por precisar criar a tabela, gerar locks e, depois, dropar a tabela. Além, é claro, de ocupar espaço real no tempdb.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>Após o overview relacionado às temp tables, podemos partir para as Variáveis de Tabela (@table):</h2>
+            <p>Como o próprio nome diz, trata-se de uma variável, assim como uma string ou um int. Ela é inicializada, preenchida e descartada automaticamente no final do escopo ou do batch.</p>
+
+            <h3>Isso pode soar como o cenário ideal:</h3>
+            <p>Sintaxe mais limpa (sem precisar fazer DROP) e menos I/O de metadata gerando log no tempdb. Porém, o paradigma aqui é extremamente perigoso para o banco de dados.</p>
+            
+            <p>O SQL Server trabalha cegamente com variáveis de tabela. Independentemente de você inserir 10, 1.000 ou 1 milhão de linhas, o otimizador sempre vai estimar que existem exatamente 100 linhas ali dentro (ou apenas 1 em versões mais antigas do SQL Server). Simplesmente não existem histogramas.</p>
+
+            <blockquote>
+                Fato curioso: Tentar usar OPTION (RECOMPILE) em uma variável de tabela não vai salvar sua query. Como não existem histogramas para ler, a recompilação vai continuar estimando as mesmas 100 linhas de forma fixa.
+            </blockquote>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>O "chute" de 30% do SQL Server:</h2>
+            <p>Existe um comportamento curioso no motor do SQL Server quando lidamos com Variáveis de Tabela. Como a <code>@table</code> <strong>não possui estatísticas nem histogramas</strong>, o otimizador fica "cego" em relação à distribuição real dos dados que estão lá dentro.</p>
+
+            <p>Quando você executa uma consulta usando operadores de desigualdade ou intervalo (como <code><</code>, <code><=</code>, <code>></code>, <code>>=</code>), o mecanismo de <em>Cardinality Estimation (CE)</em> precisa adivinhar quantas linhas vão retornar. Sem ter um histograma para ler, ele aplica uma regra de <em>fallback</em> (um chute padronizado): ele <strong>sempre estima que a condição vai retornar exatamente 30% do total de linhas da tabela</strong>.</p>
+
+            <p>Observe a evidência abaixo. Inserimos 2.424.830 registros na nossa variável de tabela. Ao executarmos um <code>SELECT</code> com o filtro <code>WHERE id <= 727450</code>, o SQL Server não varreu os dados para saber a resposta. Ele simplesmente pegou a cardinalidade total da tabela e multiplicou por 0.3 (30%). O resultado? Uma estimativa cravada de <strong>727.450 linhas</strong>.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/30_percent_evidence_image.png" alt="Evidência do fallback de 30% no Cardinality Estimator" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">Repare no "Estimated Number of Rows Per Execution" mostrando exatos 30% do total inserido.</p>
+            </div>
+
+            <h2>Excessive Grant e o temido Spill:</h2>
+            <p>Quando o banco estima errado (pensando que tem 100 linhas, mas tem 100 mil), ele consequentemente erra na alocação de memória RAM para executar a operação.</p>
+
+            <p>O <em>Excessive Grant</em> ocorre quando o SQL aloca memória demais (desperdiçando recursos vitais do servidor e impedindo outras conexões de trabalharem) ou aloca memória de menos, baseando-se naquela estimativa falsa de 100 linhas.</p>
+
+            <p>Observe o operador SELECT:</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/excessive_evidence_image.png" alt="Aviso de Excessive Grant no Plano de Execução" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <p>Veja no detalhe a seguir o aviso amarelo (warning) disparado diretamente no operador SELECT. Ele mostra claramente o diagnóstico de "ExcessiveGrant", expondo a discrepância entre a memória que o SQL reservou (Grant size) e o que ele efetivamente utilizou:</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/excessive_select_property_image.png" alt="Aviso de Excessive Grant no Plano de Execução" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <p>E o que acontece se o SQL Server alocar pouca memória RAM para uma operação pesada de ordenação (Sort)? Os dados não vão caber. Como rota de fuga, o banco "derrama" (Spill) essa operação diretamente para o disco rígido, através do tempdb. É aí que a velocidade despenca, pois o disco pode ser de milhares a centenas de milhares de vezes mais lento que a memória RAM.</p>
+
+            <p>Observe o operador Sort:</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/spill_evidence_image.png" alt="Aviso de Spill para o tempdb no operador Sort" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <p>Abaixo, o aviso explícito no operador de <em>Sort</em> confirmando que o SQL foi forçado a fazer um Spill para o tempdb, degradando fortemente a performance da query:</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/spill_sort_property_image.png" alt="Aviso de Spill para o tempdb no operador Sort" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>Para finalizar: A prova prática de por que a Temp Table vence</h2>
+            <p>Até agora vimos o pesadelo que uma <code>@table</code> pode causar no plano de execução. Mas e se pegarmos exatamente o mesmo cenário (inserindo milhares de linhas e fazendo uma ordenação) e usarmos uma <code>#table</code>?</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">CREATE TABLE #MinhaTempTable (id INT PRIMARY KEY, name VARCHAR(50), age INT);
+
+-- Inserindo o mesmo grande volume de dados do cenário problemático
+INSERT INTO #MinhaTempTable 
+SELECT id, name, age FROM DEVELOPMENT..proc_1_table_test;
+
+-- O SQL Server criará estatísticas reais para essa tabela
+SELECT id, name, age 
+FROM #MinhaTempTable 
+WHERE id <= 1000 
+ORDER BY age;
+
+DROP TABLE #MinhaTempTable;</code></pre>
+            </div>
+
+            <p>Ao analisar as propriedades do plano de execução dessa nova query, a mágica acontece. Como o SQL Server gera <strong>estatísticas reais e histogramas</strong> para a Temp Table logo após a inserção dos dados, o otimizador não precisa mais "adivinhar".</p>
+
+            <p>Na imagem abaixo, você pode notar que o <em>Estimated Number of Rows</em> bate perfeitamente com a realidade. Como o banco sabe a quantidade exata de dados que vai processar, ele aloca a memória (Memory Grant) na medida certa e executa o <em>Sort</em> inteiramente na memória RAM, <strong>sem qualquer aviso amarelo de Spill ou Excessive Grant</strong>:</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/tem_table_image.png" alt="Plano de execução mostrando estimativas corretas com Temp Table" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <p>Essas são as principais diferenças práticas e teóricas entre Temp Tables e Table Variables. A regra de ouro é: se você tem menos de 100 linhas (ou apenas um passador simples de parâmetros), uma <code>@table</code> pode deixar o código limpo. Para qualquer volume além disso, ou se tiver dúvida de quanto sua transação vai crescer em produção, vá de <code>#table</code>. O custo de I/O para criá-la é ínfimo se comparado ao pesadelo arquitetural de um plano de execução corrompido por uma variável gigante.</p>
+
+            <p>Obrigado por ler até aqui e bons estudos!</p>
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
