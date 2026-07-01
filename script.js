@@ -84,3 +84,37 @@ document.querySelectorAll('.copy-btn').forEach(button => {
         }
     });
 });
+
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("image-modal");
+    const modalImg = document.getElementById("zoomed-image");
+    const closeBtn = document.querySelector(".close-modal");
+
+    const images = document.querySelectorAll(".zoomable");
+
+    if (images.length > 0 && modal) {
+        
+        images.forEach(function(img) {
+            img.onclick = function() {
+                modal.style.display = "flex"; 
+                modalImg.src = this.src;
+            }
+        });
+
+        closeBtn.onclick = function() { 
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape" && modal.style.display === "flex") {
+                modal.style.display = "none";
+            }
+        });
+    }
+});

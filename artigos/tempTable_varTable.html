@@ -79,12 +79,12 @@
             <h2>O "chute" de 30% do SQL Server:</h2>
             <p>Existe um comportamento curioso no motor do SQL Server quando lidamos com Variáveis de Tabela. Como a <code>@table</code> <strong>não possui estatísticas nem histogramas</strong>, o otimizador fica "cego" em relação à distribuição real dos dados que estão lá dentro.</p>
 
-            <p>Quando você executa uma consulta usando operadores de desigualdade ou intervalo (como <code><</code>, <code><=</code>, <code>></code>, <code>>=</code>), o mecanismo de <em>Cardinality Estimation (CE)</em> precisa adivinhar quantas linhas vão retornar. Sem ter um histograma para ler, ele aplica uma regra de <em>fallback</em> (um chute padronizado): ele <strong>sempre estima que a condição vai retornar exatamente 30% do total de linhas da tabela</strong>.</p>
+            <p>Quando você executa uma consulta usando operadores de desigualdade ou intervalo (como <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>), o mecanismo de <em>Cardinality Estimation (CE)</em> precisa adivinhar quantas linhas vão retornar. Sem ter um histograma para ler, ele aplica uma regra de <em>fallback</em> (um chute padronizado): ele <strong>sempre estima que a condição vai retornar exatamente 30% do total de linhas da tabela</strong>.</p>
 
-            <p>Observe a evidência abaixo. Inserimos 2.424.830 registros na nossa variável de tabela. Ao executarmos um <code>SELECT</code> com o filtro <code>WHERE id <= 727450</code>, o SQL Server não varreu os dados para saber a resposta. Ele simplesmente pegou a cardinalidade total da tabela e multiplicou por 0.3 (30%). O resultado? Uma estimativa cravada de <strong>727.450 linhas</strong>.</p>
+            <p>Observe a evidência abaixo. Inserimos 2.424.830 registros na nossa variável de tabela. Ao executarmos um <code>SELECT</code> com o filtro <code>WHERE id &lt;= 727450</code>, o SQL Server não varreu os dados para saber a resposta. Ele simplesmente pegou a cardinalidade total da tabela e multiplicou por 0.3 (30%). O resultado? Uma estimativa cravada de <strong>727.450 linhas</strong>.</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/30_percent_evidence_image.png" alt="Evidência do fallback de 30% no Cardinality Estimator" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <img src="../images/30_percent_evidence_image.png" alt="Evidência do fallback de 30% no Cardinality Estimator" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
                 <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">Repare no "Estimated Number of Rows Per Execution" mostrando exatos 30% do total inserido.</p>
             </div>
 
@@ -96,13 +96,13 @@
             <p>Observe o operador SELECT:</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/excessive_evidence_image.png" alt="Aviso de Excessive Grant no Plano de Execução" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <img src="../images/excessive_evidence_image.png" alt="Aviso de Excessive Grant no Plano de Execução" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
             </div>
 
             <p>Veja no detalhe a seguir o aviso amarelo (warning) disparado diretamente no operador SELECT. Ele mostra claramente o diagnóstico de "ExcessiveGrant", expondo a discrepância entre a memória que o SQL reservou (Grant size) e o que ele efetivamente utilizou:</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/excessive_select_property_image.png" alt="Aviso de Excessive Grant no Plano de Execução" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <img src="../images/excessive_select_property_image.png" alt="Aviso de Excessive Grant no Plano de Execução" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
             </div>
 
             <p>E o que acontece se o SQL Server alocar pouca memória RAM para uma operação pesada de ordenação (Sort)? Os dados não vão caber. Como rota de fuga, o banco "derrama" (Spill) essa operação diretamente para o disco rígido, através do tempdb. É aí que a velocidade despenca, pois o disco pode ser de milhares a centenas de milhares de vezes mais lento que a memória RAM.</p>
@@ -110,13 +110,13 @@
             <p>Observe o operador Sort:</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/spill_evidence_image.png" alt="Aviso de Spill para o tempdb no operador Sort" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <img src="../images/spill_evidence_image.png" alt="Aviso de Spill para o tempdb no operador Sort" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
             </div>
 
             <p>Abaixo, o aviso explícito no operador de <em>Sort</em> confirmando que o SQL foi forçado a fazer um Spill para o tempdb, degradando fortemente a performance da query:</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/spill_sort_property_image.png" alt="Aviso de Spill para o tempdb no operador Sort" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <img src="../images/spill_sort_property_image.png" alt="Aviso de Spill para o tempdb no operador Sort" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
             </div>
 
             <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
@@ -135,7 +135,7 @@ SELECT id, name, age FROM DEVELOPMENT..proc_1_table_test;
 -- O SQL Server criará estatísticas reais para essa tabela
 SELECT id, name, age 
 FROM #MinhaTempTable 
-WHERE id <= 1000 
+WHERE id &lt;= 1000 
 ORDER BY age;
 
 DROP TABLE #MinhaTempTable;</code></pre>
@@ -146,7 +146,7 @@ DROP TABLE #MinhaTempTable;</code></pre>
             <p>Na imagem abaixo, você pode notar que o <em>Estimated Number of Rows</em> bate perfeitamente com a realidade. Como o banco sabe a quantidade exata de dados que vai processar, ele aloca a memória (Memory Grant) na medida certa e executa o <em>Sort</em> inteiramente na memória RAM, <strong>sem qualquer aviso amarelo de Spill ou Excessive Grant</strong>:</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/tem_table_image.png" alt="Plano de execução mostrando estimativas corretas com Temp Table" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <img src="../images/tem_table_image.png" alt="Plano de execução mostrando estimativas corretas com Temp Table" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
             </div>
 
             <p>Essas são as principais diferenças práticas e teóricas entre Temp Tables e Table Variables. A regra de ouro é: se você tem menos de 100 linhas (ou apenas um passador simples de parâmetros), uma <code>@table</code> pode deixar o código limpo. Para qualquer volume além disso, ou se tiver dúvida de quanto sua transação vai crescer em produção, vá de <code>#table</code>. O custo de I/O para criá-la é ínfimo se comparado ao pesadelo arquitetural de um plano de execução corrompido por uma variável gigante.</p>
@@ -159,6 +159,11 @@ DROP TABLE #MinhaTempTable;</code></pre>
     <footer>
         <p>&copy; 2026 - Vinicius Henrique</p>
     </footer>
+
+    <div id="image-modal" class="modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="zoomed-image">
+    </div>
 
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <script src="../script.js"></script>
