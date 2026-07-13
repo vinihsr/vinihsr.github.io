@@ -45,7 +45,7 @@
                 <h1 style="font-size: 3.5rem;">Replicação: SQL Server x PostgreSQL</h1>
             </div>
 
-            <p>Este artigo servirá de guia prático e teórico sobre um dos pilares mais fundamentais da infraestrutura de dados moderna: a replicação. Seja para garantir Alta Disponibilidade (HA/DR), desonerar o nó transacional via Read Scale-Out ou isolar cargas de trabalho analíticas (OLAP), entender como os motores transmitem transações pela rede é vital.</p>
+            <p>Este artigo descreve um dos pilares mais fundamentais da infraestrutura de dados moderna: a replicação. Seja para garantir Alta Disponibilidade (HA/DR), aliviar o nó transacional via Read Scale-Out ou isolar cargas de trabalho analíticas (OLAP), entender como os motores transmitem transações pela rede é vital para a carreira de um DBA/DBRE.</p>
 
             <h2>Sabendo disso, vamos começar pelo ecossistema do PostgreSQL e seus dois modelos nativos:</h2>
             <p>No Postgres, a replicação evoluiu drasticamente e hoje se divide em duas grandes categorias bem definidas: a replicação Física e a replicação Lógica. Ambas cumprem papéis excelentes, mas trabalham com paradigmas completamente diferentes sob o capô.</p>
@@ -55,7 +55,7 @@
             <p>Fisicamente, a réplica é um clone idêntico do nó primário. O processo funciona através de engrenagens bem coordenadas: o nó principal possui o processo <code>walsender</code>, que empurra o fluxo do WAL via rede para o processo <code>walreceiver</code> na réplica. A partir dali, o processo <code>startup</code> aplica essas mudanças diretamente nos arquivos de dados do nó secundário (Hot Standby), que fica aberto exclusivamente para consultas de leitura.</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/postgresql_replicacao_fisica.png" alt="Diagrama da Arquitetura de Streaming Replication do PostgreSQL" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <img src="../images/postgresql_replicacao_fisica.png" alt="Diagrama da Arquitetura de Streaming Replication do PostgreSQL" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             </div>
 
             <p>Esse modelo pode rodar em modo Assíncrono (onde o Primary confirma o COMMIT sem esperar a réplica, gerando um risco mínimo de lag) ou Síncrono (onde o Primary segura o COMMIT até a réplica confirmar a gravação no WAL, priorizando consistência total sobre a latência de rede).</p>
@@ -65,7 +65,7 @@
             <p>O nó de origem decodifica o WAL binário em comandos lógicos estruturados (ex: "Inserir ID 5 na tabela Clientes"). Isso traz uma granularidade fantástica: você pode optar por replicar apenas tabelas específicas, consolidar dados de múltiplos servidores em um único Data Warehouse analítico, ou realizar upgrades de versão do banco de dados com praticamente zero de downtime, já que ela aceita tráfego entre versões diferentes do Postgres.</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/postgresql_replicacao_logica.png" alt="Diagrama do Modelo de Publicação e Subscrição da Replicação Lógica do PostgreSQL" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <img src="../images/postgresql_replicacao_logica.png" alt="Diagrama do Modelo de Publicação e Subscrição da Replicação Lógica do PostgreSQL" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             </div>
 
             <blockquote>
@@ -75,7 +75,7 @@
             <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
 
             <h2>Após o overview do Postgres, podemos partir para o modelo tradicional do SQL Server:</h2>
-            <p>Aqui precisamos desmistificar um ponto crucial. No SQL Server, o termo "Replicação" refere-se a uma tecnologia de distribuição de objetos lógicos baseada em uma metáfora editorial (Publisher, Distributor e Subscriber) gerenciada via SQL Server Agent. Ela não deve ser confundida com soluções puras de infraestrutura e HA (como o AlwaysOn Availability Groups).</p>
+            <p>Aqui precisamos desmistificar um ponto crucial. No SQL Server, o termo "Replicação" refere-se a uma tecnologia de distribuição de objetos lógicos baseados em uma subdivisão (Publisher, Distributor e Subscriber) gerenciada via SQL Server Agent. Ela não deve ser confundida com soluções puras de infraestrutura e HADR (como o AlwaysOn Availability Groups).</p>
 
             <h3>A Replicação Transacional (Transactional Replication)</h3>
             <p>É o modelo incremental em tempo real mais utilizado para Read Scale-Out. O mecanismo funciona em três etapas fundamentais:</p>
@@ -88,7 +88,7 @@
             <p>Sob o capô, o agente <strong>Log Reader Agent</strong> escaneia o arquivo de log (<code>.ldf</code>) do Publisher em busca de alterações nos artigos publicados. Ao encontrá-las, ele move os comandos para o Distribuidor. Em seguida, o <strong>Distribution Agent</strong> assume a tarefa de descarregar e executar essas transações cronologicamente no Subscriber.</p>
 
             <div style="text-align: center; margin: 32px 0;">
-                <img src="../images/sqlserver_replicacao_transacional.png" alt="Diagrama da Arquitetura da Replicação Transacional do SQL Server" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <img src="../images/sqlserver_replicacao_transacional.png" alt="Diagrama da Arquitetura da Replicação Transacional do SQL Server" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             </div>
 
             <blockquote>
@@ -97,16 +97,42 @@
 
             <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
 
-            <h2>O Pesadelo do DBA: Cenários de falha real em produção</h2>
-            <p>Se a comunicação falha ou a infraestrutura engasga, ambos os motores possuem armadilhas severas capazes de estourar o armazenamento do servidor e paralisar a operação.</p>
+            <h3>Os outros modelos de replicação do SQL Server</h3>
+            <p>A Replicação Transacional é o modelo mais popular, mas está longe de ser o único. O SQL Server oferece mais três variações, cada uma resolvendo um problema de topologia diferente: dados que mudam pouco, dispositivos que ficam offline, e escrita distribuída geograficamente.</p>
 
-            <h3>No PostgreSQL e o perigo dos Replication Slots inativos</h3>
-            <p>Para garantir que o nó primário não descarte arquivos antigos de WAL antes que a réplica os leia, o Postgres utiliza os <strong>Replication Slots</strong>, travando o ponteiro do LSN na última posição lida com sucesso pelo standby.</p>
-            <p>Se uma réplica de leitura sofrer uma quebra de hardware severa e ficar offline por dias, o slot associado continuará retido no Primário, segurando aquele LSN antigo. Conforme as escritas transacionais avançam no ambiente de produção, o processo de cleanup automático fica proibido de deletar ou reciclar os arquivos da pasta <code>pg_wal</code>. O resultado? Centenas de segmentos de 16MB acumulados sequencialmente até estourarem o disco rígido do nó principal.</p>
+            <h3>Replicação Snapshot (Snapshot Replication)</h3>
+            <p>É o modelo mais simples de todos e, na prática, serve de base para inicializar os outros dois (toda publicação de Merge ou Transacional começa com um snapshot inicial). Diferente da Transacional, ela não monitora o log de transações continuamente — não existe granularidade incremental.</p>
+            <p>O agente responsável é o <strong>Snapshot Agent</strong>, que gera periodicamente uma cópia completa do esquema e dos dados dos artigos publicados, salvando arquivos <code>.sch</code> (schema) e <code>.bcp</code> (dados, via bulk copy) na pasta de snapshot do Distribuidor. O Distribution Agent então aplica essa cópia inteira no Subscriber, substituindo a versão anterior.</p>
 
-            <h3>No SQL Server e o crescimento infinito do Log transacional</h3>
-            <p>Cenário semelhante ocorre se o Distribution Agent perder a conectividade ou quebrar o schema de sincronia com o Subscriber. O banco de dados <code>distribution</code> passará a acumular gigabytes de dados retidos no Distribuidor.</p>
-            <p>Paralelamente, no banco do <strong>Publisher</strong>, o arquivo de log (<code>.ldf</code>) perderá a capacidade de sofrer truncamento (mesmo com rotinas periódicas de backup em modelo FULL). O SQL Server marcará internamente o espaço transacional com o status de reuso <code>REPLICATION</code>. Sem vazão para o distribuidor, o arquivo de log crescerá linearmente até atingir o limite físico do disco, derrubando o banco de produção com o temido erro 9002.</p>
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/sqlserver_replicacao_snapshot.png" alt="Diagrama da Arquitetura da Replicação Snapshot do SQL Server" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <p>Por não gerar tráfego contínuo, é ideal para tabelas de baixa volatilidade (tabelas de domínio, catálogos de produtos) ou cenários onde uma janela de atualização diária/semanal é aceitável.</p>
+
+            <h3>Replicação de Merge (Merge Replication)</h3>
+            <p>Aqui a via deixa de ser única. A Replicação de Merge permite que tanto o Publisher quanto os Subscribers façam alterações independentes nos mesmos dados — inclusive offline — e sincronizem tudo posteriormente. É o modelo clássico para força de campo (vendedores, técnicos) que trabalham desconectados e sincronizam ao voltar à rede.</p>
+            <p>O mecanismo depende de triggers automáticas instaladas em cada tabela publicada, que registram toda alteração em tabelas de rastreamento do sistema (<code>MSmerge_contents</code> e <code>MSmerge_tombstone</code>), identificando cada linha por uma coluna <code>rowguid</code> exclusiva. O <strong>Merge Agent</strong> é quem varre essas tabelas de rastreamento em ambos os nós e aplica as mudanças pendentes nas duas direções.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/sqlserver_replicacao_merge.png" alt="Diagrama da Arquitetura da Replicação de Merge do SQL Server" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <blockquote>
+                Fato curioso: Como duas pontas podem alterar a mesma linha simultaneamente enquanto offline, o Merge precisa de um resolvedor de conflitos. Por padrão, o SQL Server usa resolução por prioridade (a alteração do nó com maior <em>priority number</em> vence), mas é possível programar resolvedores customizados via COM ou .NET para regras de negócio específicas.
+            </blockquote>
+
+            <h3>Peer-to-Peer Replication</h3>
+            <p>É uma variação da Replicação Transacional pensada para topologias multi-master: em vez de um único Publisher, todos os nós participantes são simultaneamente Publisher e Subscriber uns dos outros. Cada nó roda seu próprio Log Reader Agent e Distribution Agent, propagando as transações para todos os outros nós da malha.</p>
+            <p>O objetivo aqui não é tolerância a conflitos (o SQL Server não resolve conflitos automaticamente nesse modelo), mas sim disponibilidade de escrita distribuída geograficamente — cada região grava localmente e replica para as demais, geralmente com particionamento lógico de dados por nó para evitar que duas pontas escrevam a mesma linha.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/sqlserver_peer_to_peer.png" alt="Diagrama da Arquitetura da Peer-to-Peer Replication do SQL Server" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            </div>
+
+            <blockquote>
+                Regra de ouro: escolha o modelo pela natureza do dado, não pela familiaridade com a ferramenta. Dado que muda pouco e tolera atraso → Snapshot. Dado que precisa ser editado offline e reconciliado depois → Merge. Escrita distribuída sem overlap de linhas entre regiões → Peer-to-Peer. Leitura em tempo real a partir de uma única fonte de verdade → Transacional.
+            </blockquote>
 
             <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
 
@@ -158,7 +184,7 @@ WHERE log_reuse_wait_desc IN ('REPLICATION', 'AVAILABILITY_GROUP');</code></pre>
 
     </main>
 
-    <footer>
+<footer>
         <p>&copy; 2026 - Vinicius Henrique</p>
     </footer>
 
