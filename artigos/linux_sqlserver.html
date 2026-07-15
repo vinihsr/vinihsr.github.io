@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Server no Linux | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">BANCO DE DADOS // SQL SERVER // LINUX // TROUBLESHOOTING</div>
+                <h1 style="font-size: 3.5rem;">SQL Server no Linux: Guia inicial</h1>
+            </div>
+
+            <p>Esse artigo descreve um passo fundamental para o DBA SQL Server: a adaptação ao ambiente Linux. Seja para baratear custos de licenciamento de sistema operacional, padronizar pipelines com contêineres ou unificar a stack de servidores, entender como gerenciar o motor do SQL Server fora do seu habitat natural é vital.</p>
+
+            <h2>Sabendo disso, vamos começar pelo choque de realidade: sair do conforto do Windows Server.</h2>
+            <p>No ecossistema do PostgreSQL, o Linux é a casa nativa. DBAs de Postgres estão acostumados a gerenciar processos, analisar consumo de memória e fazer o troubleshooting de I/O diretamente pelo terminal. Para os DBAs de SQL Server, que historicamente dependem do Task Manager, do PerfMon e do SSMS para tudo, a tela preta pode parecer hostil. Mas os conceitos são os mesmos, apenas as ferramentas mudam.</p>
+            
+            <p>Quando o servidor apresenta lentidão, a primeira reação no Windows é abrir o Task Manager. No Linux, nós acessamos o terminal e utilizamos ferramentas nativas que leem diretamente as informações do kernel.</p>
+            
+            <h3>1. CPU e Memória (O substituto do Task Manager)</h3>
+            <p>Para monitoramento em tempo real de processos, o comando clássico é o <code>top</code> (ou <code>htop</code>, sua versão aprimorada e interativa). Ele entrega a visão do consumo de CPU por núcleo, uso de memória RAM e Swap. Para o SQL Server, você vai procurar pelo processo principal chamado <code>sqlservr</code>.</p>
+            
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Abre o monitor de processos interativo. Pressione 'F4' para filtrar por 'sqlservr' e 'q' para sair.
+htop</code></pre>
+            </div>
+
+            <p>Se você precisa de uma visão rápida e estática apenas do consumo global de memória RAM (total, usada, livre e em cache/buffer), o comando <code>free</code> é a escolha certa:</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Exibe o uso de memória do sistema em formato legível para humanos (Megabytes/Gigabytes)
+free -h</code></pre>
+            </div>
+            
+            <h3>2. Armazenamento e I/O (O substituto do Windows Explorer e Resource Monitor)</h3>
+            <p>Diferente do Windows com seus discos C:, D: e E:, o Linux usa uma árvore de diretórios unificada montada na raiz (/). Para verificar o espaço livre em disco, usamos o <code>df -h</code>. Para saber o tamanho de uma pasta específica (como os dados do banco), usamos o <code>du -sh</code>.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Verifica o espaço livre em todas as partições montadas
+df -h
+
+# Verifica o tamanho total do diretório de dados padrão do SQL Server
+sudo du -sh /var/opt/mssql/data/</code></pre>
+            </div>
+
+            <p>Mas para um DBA, espaço livre não basta; precisamos ver o gargalo de leitura e escrita (I/O). O <code>iostat</code> é fundamental para medir as IOPS e a latência de disco no momento de lentidão:</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Exibe estatísticas estendidas de I/O em disco, atualizando a cada 2 segundos
+iostat -xd 2</code></pre>
+            </div>
+            
+            <blockquote>
+                Fato curioso: A Microsoft manteve a estrutura lógica tão fiel que os arquivos de dados continuam sendo .mdf, .ndf e .ldf, mesmo rodando em um sistema de arquivos ext4 ou XFS no Linux.
+            </blockquote>
+
+            <h3>3. Serviços e Logs do SO (O substituto do services.msc e Event Viewer)</h3>
+            <p>No Linux moderno, quem gerencia os serviços rodando em background (daemons) é o systemd. Em vez de abrir painéis gráficos para reiniciar o serviço do banco, tudo é feito via <code>systemctl</code>. E para ler os logs registrados pelo SO (caso o serviço tenha "crachado" antes mesmo de iniciar o SQL), usamos o <code>journalctl</code>.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Verifica se o SQL Server está rodando, se falhou ou se está inativo
+sudo systemctl status mssql-server
+
+# Para reiniciar o serviço do SQL Server brutalmente
+sudo systemctl restart mssql-server
+
+# Lê os últimos 50 logs de sistema gerados especificamente pelo SQL Server
+sudo journalctl -u mssql-server -n 50</code></pre>
+            </div>
+
+            <h3>4. Lendo Logs Internos e Arquivos (O substituto do Notepad / SSMS Log Viewer)</h3>
+            <p>No Windows, você abriria o SSMS ou o Bloco de Notas para analisar o famoso <code>ERRORLOG</code> do SQL Server. No Linux, nós lemos arquivos de texto gigantescos instantaneamente pelo terminal sem travamentos. O <code>tail</code> lê o final do arquivo, enquanto o <code>grep</code> atua como um "Ctrl+F", buscando trechos específicos.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Exibe as últimas linhas do ERRORLOG em tempo real (acompanhando a gravação ao vivo)
+tail -f /var/opt/mssql/log/errorlog
+
+# Busca exclusivamente por falhas de login (Login failed) dentro do ERRORLOG
+grep "Login failed" /var/opt/mssql/log/errorlog</code></pre>
+            </div>
+
+            <h3>5. Rede e Conectividade (O substituto do netstat do Windows)</h3>
+            <p>A aplicação não consegue conectar? Antes de culpar o banco, você precisa verificar se o SQL Server realmente subiu e se está escutando na porta correta (1433 por padrão). O comando <code>ss</code> (Socket Statistics) substitui o netstat.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Lista as portas TCP abertas (Listening), numéricas, e mostra qual processo as está usando
+sudo ss -tlnp | grep sqlservr</code></pre>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>Como funciona o SQL Server no Linux por baixo dos panos?
+            </h2>
+            <p>Aqui precisamos minar um ponto crucial. Diferente do PostgreSQL, que foi escrito com chamadas diretas às APIs nativas do kernel Linux (POSIX), o motor relacional do SQL Server possui milhões de linhas de código fortemente atreladas às APIs do Windows (Win32).</p>
+
+            <p>A Microsoft não reescreveu o SQL Server do zero. Ela criou uma camada de abstração brilhante chamada <strong>SQLPAL (SQL Server Platform Abstraction Layer)</strong>. Baseada no antigo projeto de pesquisa Drawbridge, o SQLPAL atua como um "mini sistema operacional" embutido dentro do processo do Linux. Ele traduz em tempo real as chamadas do motor do banco de dados para chamadas que o kernel do Linux consegue entender.</p>
+
+            <ul>
+                <li><strong>Compatibilidade total:</strong> Devido ao SQLPAL, o motor continua utilizando as mesmas estruturas de agendamento (SQLOS). O banco "acha" que está no Windows.</li>
+                <li><strong>Migração transparente:</strong> É por conta dessa arquitetura que você pode fazer um backup (.bak) em um Windows Server 2022 e restaurar perfeitamente em um servidor Linux.</li>
+            </ul>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+<h2>Instalação e Ferramentas: Sem interface gráfica</h2>
+            <p>Se você usou Linux na vida, aqui vai a maior diferença conceitual: no Windows, você entra no site da Microsoft, baixa um arquivo <code>.iso</code> de gigabytes, monta a imagem e roda um <code>setup.exe</code>. No Linux, nós usamos <strong>Gerenciadores de Pacotes</strong> (como o <code>apt</code> no Ubuntu ou <code>dnf</code> no RedHat).</p>
+            
+            <p>Em vez de ir atrás do arquivo, você diz ao sistema operacional através do terminal onde estão os servidores da Microsoft, e o próprio Linux baixa, descompacta e instala tudo no lugar certo. Isso facilita a vida de quem trabalha com automação (Ansible, Terraform) e Infraestrutura como Código.</p>
+            
+            <p>Usando o Ubuntu como exemplo (a distribuição mais amigável para iniciantes), o processo físico se resume a estes comandos:</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># 1. Importa a chave de segurança da Microsoft (para garantir que o download é oficial)
+curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+
+# 2. Adiciona o repositório do SQL Server 2022 na "lista telefônica" do seu Linux
+curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2022.list | sudo tee /etc/apt/sources.list.d/mssql-server-2022.list
+
+# 3. Atualiza a lista de pacotes disponíveis e instala o motor do banco de dados
+sudo apt-get update
+sudo apt-get install -y mssql-server</code></pre>
+            </div>
+
+            <p>Pronto, os binários estão instalados. Mas o banco ainda não está rodando. Falta a configuração final (collation, portas e a famosa senha do SysAdmin). Para isso, a Microsoft criou um utilitário exclusivo chamado <code>mssql-conf</code>.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Executa o assistente de configuração inicial interativo
+sudo /opt/mssql/bin/mssql-conf setup</code></pre>
+            </div>
+
+            <p>Ao rodar o comando acima, o terminal fará duas perguntas cruciais para você:</p>
+            <ol>
+                <li><strong>A Edição do SQL Server:</strong> Ele vai listar opções de 1 a 8 (Evaluation, Developer, Express, Standard, Enterprise...). Digite o número correspondente à sua necessidade e Enter.</li>
+                <li><strong>A senha do <code>sa</code>:</strong> Aqui vai um detalhe que todo iniciante no Linux acaba se confundindo: por questões de segurança, <strong>ao digitar senhas no terminal, nada aparece na tela</strong>. Nem mesmo asteriscos. O Linux está capturando as teclas. Apenas digite sua senha forte e aperte Enter.</li>
+            </ol>
+
+            <h3>E quanto à administração no dia a dia?</h3>
+            
+                <p>O SSMS é maravilhoso, mas é exclusivo do Windows. Para um fluxo de trabalho multiplataforma, temos duas opções principais:</p>
+
+            <ul>
+                <li><strong>Azure Data Studio (ADS):</strong> É a recomendação moderna. Construída sobre o Electron (mesma base do VS Code), roda nativamente no Linux. Possui suporte excelente para T-SQL, visualização de planos de execução gráficos e extensões poderosas.</li>
+                <li><strong>DBeaver:</strong> Baseado em Java, é um cliente universal extremamente popular na comunidade Linux. Se você gerencia múltiplos motores de banco de dados no seu dia a dia, ele se conecta perfeitamente ao SQL Server (via driver JDBC) e oferece uma interface gráfica robusta e familiar que lembra bastante a flexibilidade estrutural do SSMS.</li>
+                <li><strong>sqlcmd:</strong> A ferramenta oficial de linha de comando. Essencial para quando você está conectado via SSH em um servidor sem interface gráfica e precisa executar consultas rápidas ou scripts de manutenção.</li>
+            </ul>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-bash"># Conectando localmente via sqlcmd para testar a instância
+sqlcmd -S localhost -U sa -P 'SuaSenhaForte123!' -Q "SELECT @@VERSION"</code></pre>
+            </div>
+
+            <p>A curva de aprendizado inicial pode assustar quem nunca saiu do ecossistema Microsoft, mas os fundamentos do motor de banco de dados permanecem os mesmos. Dominar a CLI do Linux não apenas expande seu portfólio de administração e troubleshooting, mas é o primeiro passo para orquestrar bancos de dados robustos em arquiteturas orientadas a contêineres. Obrigado por ler até aqui e bons estudos!</p>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy;2026 - Vinicius Henrique</p>
+    </footer>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
