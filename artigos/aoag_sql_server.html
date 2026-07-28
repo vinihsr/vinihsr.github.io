@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitetura por trás do Always On Availability Groups | Vinicius</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">BANCO DE DADOS // SQL SERVER // ALWAYSON AG // ALTA DISPONIBILIDADE</div>
+                <h1 style="font-size: 3.5rem;">Always On Availability Groups</h1>
+            </div>
+
+            <p>Olá, pessoal! Se você trabalha com sustentação, arquitetura ou engenharia de dados em ambientes críticos, sabe que garantir que o banco de dados permaneça no ar mesmo diante de falhas de hardware, rede ou desastres locais é um dos pilares mais importantes da profissão. No universo do Microsoft SQL Server, a solução definitiva para esse desafio atende pelo nome de <strong>Always On Availability Groups (AG)</strong>.</p>
+            
+            <p>Neste artigo, vamos fazer um mergulho profundo no tema: passaremos do conceito de HADR até a anatomia interna das threads do mecanismo, compararemos a arquitetura com o PostgreSQL e encerraremos com scripts T-SQL prontos para o seu monitoramento no dia a dia.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>1. O Conceito de HADR e a Evolução: Por que o Always On substituiu o Database Mirroring?</h2>
+            <p>Para entender o Always On AG, primeiro precisamos revisar duas siglas essenciais do mundo corporativo:</p>
+            <ul>
+                <li><strong>HA (High Availability / Alta Disponibilidade):</strong> Foco em minimizar o tempo de inatividade não planejado (RTO - <em>Recovery Time Objective</em> próximo de zero).</li>
+                <li><strong>DR (Disaster Recovery / Recuperação de Desastres):</strong> Foco em garantir que os dados não sejam perdidos em caso de falhas (RPO - <em>Recovery Point Objective</em> próximo de zero).</li>
+            </ul>
+            
+            <p>Antes do SQL Server 2012, a principal tecnologia baseada em logs de transação para HADR era o <strong>Database Mirroring</strong>. Apesar de eficiente para a época, ele possuía limitações severas:</p>
+            
+            <ul>
+                <li>Funcionava estritamente a nível de <strong>um único banco de dados</strong> por sessão. Se a sua aplicação dependesse de três bancos relacionais, o failover de um não garantia o failover dos outros.</li>
+                <li>A réplica secundária ficava inacessível para leitura (a menos que você criasse um <em>Database Snapshot</em> manual).</li>
+                <li>Recurso descontinuado (deprecated) pela Microsoft em versões mais recentes.</li>
+            </ul>
+
+            <p>O <strong>Always On Availability Groups</strong> resolveu essas dores permitindo agrupar múltiplos bancos de dados (Availability Databases) que fazem failover em conjunto, além de suportar até 8 réplicas secundárias, suporte a leituras offloaded (réplicas de leitura), backups no secundário e o conceito do <strong>Listener</strong> — um Ponto de Conexão VIRTUAL (VNN + IP) que redireciona o tráfego da aplicação de forma transparente para o nó primário corrente.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <div style="max-width: 100%; border-radius: 8px; border: 1px dashed var(--border-color); padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: var(--text-color); font-family: var(--font-code);">
+                    <img src="../images/mirroring_vs_alwayson_ag.png" alt="Topologia do SQL Server" class="zoomable" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0px 0px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;">
+                </div>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>2. Arquitetura explicada:</h2>
+            <p>Uma dúvida clássica é: <em>O que acontece com o dado físico no nó primário após o envio do log? Ele aguarda a confirmação do secundário para gravar no arquivo MDF?</em> A resposta está na separação estrita entre a movimentação dos blocos do <strong>Transaction Log (LDF)</strong> e a gravação de páginas de dados (MDF) através do conceito de <em>Write-Ahead Logging (WAL)</em>.</p>
+
+            <h3>A Jornada da Transação e o MDF Primário</h3>
+            <ol>
+                <li><strong>Alteração em Memória e Log Flush (Primário):</strong> Quando uma aplicação envia um <code>INSERT/UPDATE/DELETE</code>, as páginas de dados são modificadas <strong>apenas na memória</strong> (no <em>Buffer Pool</em> do nó primário). Ao emitir o <code>COMMIT</code>, o SQL Server grava esse registro de alteração no arquivo físico de log (LDF) local. <strong>Atenção:</strong> A gravação física no arquivo de dados primário (MDF) NÃO acontece neste momento. Ela é totalmente independente do <code>COMMIT</code> ou do AG, ocorrendo de forma assíncrona posteriormente (processos de <em>Checkpoint</em> ou <em>Lazy Writer</em>).</li>
+                <li><strong>Log Capture & Log Sender (Primário):</strong> Assim que o log é gravado no LDF primário, a thread <em>Log Capture</em> lê esses novos blocos de log e os repassa para a thread <em>Log Sender</em>, que os transmite via rede (TCP/IP) para as réplicas secundárias.</li>
+                <li><strong>Log Receive & Log Hardening (Secundário):</strong> O nó secundário recebe os blocos (através da thread <em>Log Receiver</em>) e os escreve imediatamente no seu próprio arquivo de log físico (LDF secundário). Este passo crucial é chamado de <strong>Log Hardening</strong>.</li>
+                <li><strong>O Retorno do ACK:</strong> É apenas após o <em>Log Hardening</em> que o secundário avisa o primário que o dado está seguro em disco (Acknowledge).</li>
+                <li><strong>Redo Thread (Secundário):</strong> De forma contínua e em background, a <em>Redo Thread</em> lê os blocos do LDF secundário e aplica as mudanças nas páginas de dados (MDF/NDF) da réplica secundária, disponibilizando os dados para leitura.</li>
+            </ol>
+
+            <blockquote>
+                <strong>O Ponto de Espera do COMMIT Síncrono:</strong> No modo <em>Synchronous-Commit</em>, quando a aplicação pede o <code>COMMIT</code>, o nó primário a deixa aguardando (em wait state <code>HADR_SYNC_COMMIT</code>). A aplicação só recebe a resposta de "Sucesso" quando o primário conclui o seu próprio Log Flush <strong>E</strong> recebe o ACK de <em>Log Hardening</em> do secundário. O primário <strong>NÃO</strong> espera a <em>Redo Thread</em> aplicar o dado no MDF secundário, tampouco espera o Checkpoint gravar o MDF primário.
+            </blockquote>
+
+            <h3>Resumo: Modos de Commit</h3>
+            <ul>
+                <li><strong>Synchronous-Commit Mode:</strong> A transação espera a gravação do LDF (log) em ambas as pontas. Garante RPO = 0 (zero perda de dados). Se o secundário ficar lento, a aplicação no primário sofrerá latência na gravação.</li>
+                <li><strong>Asynchronous-Commit Mode:</strong> O primário confirma a transação para a aplicação imediatamente após o seu próprio <em>Log Flush</em> (LDF primário). Ele não aguarda o secundário receber ou gravar nada, focando em performance (ideal para links de DR de alta latência).</li>
+            </ul>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <div style="max-width: 100%; border-radius: 8px; border: 1px dashed var(--border-color); padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: var(--text-color); font-family: var(--font-code);">
+            <img src="../images/threads_log_capture_sender_receiver_redo_ack.png" alt="Topologia do SQL Server" class="zoomable" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0px 0px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;">
+                </div>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>3. Um Paralelo com o PostgreSQL</h2>
+            <p>Se você administra ambientes híbridos ou atua com multicloud, é natural fazer pontes entre as tecnologias do mercado:</p>
+
+            <ul>
+                <li>O transporte de logs de transação do Always On é conceitualmente equivalente ao <strong>Streaming Replication via WAL (Write-Ahead Logging)</strong> do PostgreSQL.</li>
+                <li>A <em>Redo Thread</em> do SQL Server faz um papel análogo à aplicação contínua de blocos WAL pelo processo de recuperação do Postgres no nó de Standby.</li>
+                <li>O roteamento de conexões feito pelo <strong>Listener</strong> do SQL Server e o controle de failover feito pelo <strong>WSFC (Windows Server Failover Cluster)</strong> no Postgres costumam ser implementados via ecossistema open-source com <strong>Patroni + etcd + HAProxy/PgBouncer</strong>.</li>
+            </ul>
+
+            <blockquote>
+                <strong>Paralelo Multicloud:</strong> Enquanto o SQL Server orquestra o quórum de alta disponibilidade delegando a inteligência para o cluster do sistema operacional (WSFC no Windows ou Pacemaker no Linux), o ecossistema PostgreSQL adota amplamente o modelo de Consenso Distribuído via software (DCS como etcd ou Consul no Patroni) para eleição de líder e manutenção de IP virtual.
+            </blockquote>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>4. O que é replicado? (E o que fica de fora)</h2>
+            <p>Uma confusão comum entre desenvolvedores e DBAs iniciantes é tratar o Always On como uma replicação lógica. Diferente da Replicação Transacional tradicional do SQL Server, o Always On AG opera em <strong>nível físico de banco de dados</strong>.</p>
+            <p>Como ele transporta blocos binários do <em>Transaction Log</em> (LDF), <strong>absolutamente tudo que modifica o banco de dados contido no grupo é replicado</strong>. Isso inclui:</p>
+            <ul>
+                <li><strong>Estruturas e Dados:</strong> Criação de tabelas, Views, e os dados transacionados.</li>
+                <li><strong>Programabilidade e Comportamentos:</strong> Triggers (DML e DDL), Stored Procedures, Functions e User-Defined Types (Types).</li>
+                <li><strong>Performance:</strong> Criação, alteração e reconstrução de Índices (um <code>REBUILD</code> de índice no primário gera log maciço que será fisicamente refeito no secundário).</li>
+            </ul>
+
+            <blockquote>
+                <strong>Diferença Crítica: Objetos de Instância NÃO são replicados!</strong> Como o escopo do AG engloba apenas o <em>User Database</em>, objetos a nível de servidor não entram no pacote. Isso significa que <strong>Logins, Jobs do SQL Server Agent, Linked Servers e Server Roles</strong> não são sincronizados automaticamente nas versões tradicionais. Se você criar um Login no primário, precisará criá-lo com o mesmo SID no secundário. O SQL Server 2022 introduziu os <em>Contained Availability Groups</em> para resolver justamente essa dor, replicando os metadados da instância (master/msdb virtuais).
+            </blockquote>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>5. Passo a Passo Completo: Configurando um AG do Zero</h2>
+            <p>Para implementar essa arquitetura em um ambiente de produção real, é necessário coordenar a infraestrutura de rede, sistema operacional e o motor do banco de dados. Como prometido, aqui está o roteiro essencial para DBAs, focado no que importa e sem depender de telas de Wizard:</p>
+
+            <h3>Fase 1: Preparação do Cluster (Sistema Operacional)</h3>
+            <ol>
+                <li>Certifique-se de que todos os servidores (nós) pertencem ao mesmo domínio Active Directory (AD).</li>
+                <li>Instale a <em>feature</em> de <strong>Failover Clustering</strong> (WSFC) no Windows Server em todos os nós participantes.</li>
+                <li>Crie o Cluster (via PowerShell ou <em>Failover Cluster Manager</em>), unindo os servidores.</li>
+                <li>Configure o <strong>Quorum</strong> (geralmente um <em>File Share Witness</em> ou disco compartilhado) para garantir o desempate e evitar a síndrome de <em>Split-Brain</em> caso a rede entre os nós sofra indisponibilidade.</li>
+            </ol>
+
+            <h3>Fase 2: Habilitando o Recurso no SQL Server</h3>
+            <ol>
+                <li>Abra o <strong>SQL Server Configuration Manager</strong> em cada nó.</li>
+                <li>Acesse as propriedades do serviço principal do SQL Server (<code>sqlservr.exe</code>) e vá até a aba "Always On Availability Groups".</li>
+                <li>Marque a caixa "Enable Always On Availability Groups" (o nome do Cluster WSFC criado na Fase 1 aparecerá ali).</li>
+                <li>Reinicie o serviço do SQL Server para que o <em>Database Engine</em> assuma a nova configuração.</li>
+            </ol>
+
+            <h3>Fase 3: Preparando o Banco de Dados</h3>
+            <p>O Always On exige uma cadeia de logs intacta e contínua. Logo, o banco de dados candidato deve cumprir dois requisitos rígidos:</p>
+            <ol>
+                <li>O <em>Recovery Model</em> do banco de dados <strong>deve</strong> estar configurado como <strong>FULL</strong>.</li>
+                <li>Você precisa executar um Backup FULL e, logo em seguida, um Backup de Log do banco no servidor Primário. Restaure-os no Secundário com a cláusula <code>NORECOVERY</code>.</li>
+            </ol>
+
+            <h3>Fase 4: Criação do AG e do Listener via T-SQL</h3>
+            <p>Com os pré-requisitos validados, execute o script abaixo no nó primário para criar o grupo, definir o roteamento e estabelecer as réplicas:</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">-- 1. Criação do Availability Group
+CREATE AVAILABILITY GROUP [MeuAG_Producao]
+WITH (AUTOMATED_BACKUP_PREFERENCE = SECONDARY)
+FOR DATABASE [MeuBancoCritico]
+REPLICA ON 
+    'SRV-SQL-01' WITH 
+    (
+        ENDPOINT_URL = 'TCP://SRV-SQL-01.meudominio.com:5022', 
+        AVAILABILITY_MODE = SYNCHRONOUS_COMMIT,
+        FAILOVER_MODE = AUTOMATIC,
+        SECONDARY_ROLE (ALLOW_CONNECTIONS = ALL)
+    ),
+    'SRV-SQL-02' WITH 
+    (
+        ENDPOINT_URL = 'TCP://SRV-SQL-02.meudominio.com:5022', 
+        AVAILABILITY_MODE = SYNCHRONOUS_COMMIT,
+        FAILOVER_MODE = AUTOMATIC,
+        SECONDARY_ROLE (ALLOW_CONNECTIONS = ALL)
+    );
+
+-- 2. Criação do Listener (Ponto de Conexão Virtual)
+ALTER AVAILABILITY GROUP [MeuAG_Producao]
+ADD LISTENER 'LST-MEUAG' (
+    WITH IP (('192.168.1.100', '255.255.255.0')), 
+    PORT = 1433
+);</code></pre>
+            </div>
+
+            <h3>Fase 5: Ingressando os Nós Secundários</h3>
+            <p>Acesse cada servidor secundário e ordene que eles se juntem ao grupo recém-criado, iniciando a comunicação contínua via rede:</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">-- Executar no nó Secundário
+ALTER AVAILABILITY GROUP [MeuAG_Producao] JOIN;
+ALTER DATABASE [MeuBancoCritico] SET HADR AVAILABILITY GROUP = [MeuAG_Producao];</code></pre>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>6. Queries essenciais de monitoramento para o dia a dia</h2>
+            <p>Painéis visuais (GUI) do SSMS ajudam no diagnóstico rápido, mas um DBA Sênior precisa de scripts precisos e automatizados via T-SQL. A seguir, compartilho duas queries fundamentais do meu arsenal de troubleshooting.</p>
+
+            <h3>Query 1: Estado Geral de Sincronização e Saúde das Réplicas</h3>
+            <p>Esta consulta retorna o estado de conexão, papel operacional, modo de sincronização e estado de saúde de cada banco dentro do Availability Group.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT 
+    ag.name AS availability_group,
+    ar.replica_server_name,
+    d.name AS database_name,
+    drs.role_desc AS replica_role,
+    drs.operational_state_desc,
+    drs.connected_state_desc,
+    drs.synchronization_state_desc,
+    drs.synchronization_health_desc,
+    drs.is_local
+FROM sys.dm_hadr_database_replica_states drs
+INNER JOIN sys.availability_replicas ar 
+    ON drs.replica_id = ar.replica_id
+INNER JOIN sys.availability_groups ag 
+    ON ar.group_id = ag.group_id
+INNER JOIN sys.databases d 
+    ON drs.database_id = d.database_id
+ORDER BY 
+    ag.name, 
+    ar.replica_server_name, 
+    d.name;</code></pre>
+            </div>
+
+            <h3>Query 2: Identificando Gargalos e Latência (Log Send Queue & Redo Queue)</h3>
+            <p>Essencial para diagnosticar se o seu gargalo está na Rede/Disco (<em>Log Send Queue</em>) ou no Processamento/CPU do secundário (<em>Redo Queue</em>). A query também calcula uma estimativa de tempo restante em segundos para zerar a fila de Redo.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">SELECT 
+    ag.name AS availability_group,
+    ar.replica_server_name,
+    d.name AS database_name,
+    drs.role_desc,
+    drs.synchronization_state_desc,
+    
+    -- Log Send Queue: Volume de logs gerados no primário aguardando envio ao secundário
+    drs.log_send_queue_size AS log_send_queue_kb,
+    ROUND(drs.log_send_queue_size / 1024.0, 2) AS log_send_queue_mb,
+    drs.log_send_rate AS log_send_rate_kbps,
+    
+    -- Redo Queue: Volume de logs recebidos no secundário aguardando aplicação no arquivo MDF
+    drs.redo_queue_size AS redo_queue_size_kb,
+    ROUND(drs.redo_queue_size / 1024.0, 2) AS redo_queue_size_mb,
+    drs.redo_rate AS redo_rate_kbps,
+    
+    -- Estimativa em segundos para finalizar a aplicação pendente da Redo Queue
+    CASE 
+        WHEN drs.redo_rate > 0 THEN ROUND(drs.redo_queue_size / CAST(drs.redo_rate AS FLOAT), 2)
+        ELSE 0 
+    END AS estimated_redo_completion_seconds,
+    
+    drs.last_redone_time
+FROM sys.dm_hadr_database_replica_states drs
+INNER JOIN sys.availability_replicas ar 
+    ON drs.replica_id = ar.replica_id
+INNER JOIN sys.availability_groups ag 
+    ON ar.group_id = ag.group_id
+INNER JOIN sys.databases d 
+    ON drs.database_id = d.database_id
+ORDER BY 
+    drs.log_send_queue_size DESC, 
+    drs.redo_queue_size DESC;</code></pre>
+            </div>
+
+            <p>Dominar os detalhes de funcionamento interno do Always On Availability Groups é o divisor de águas entre apenas operar uma ferramenta e saber exatamente onde agir durante um incidente crítico de infraestrutura e banco de dados.</p>
+
+            <p>Obrigado por ler até aqui e bons estudos!</p>
+
+        </article>
+
+    </main>
+
+<footer>
+        <p>&copy; 2026 - Vinicius</p>
+    </footer>
+
+    <div id="image-modal" class="modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="zoomed-image">
+    </div>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
