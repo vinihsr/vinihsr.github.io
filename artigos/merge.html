@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dominando o Comando MERGE no T-SQL | Vinicius</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">BANCO DE DADOS // T-SQL // ENGENHARIA DE DADOS // ETL</div>
+                <h1 style="font-size: 3.5rem;">MERGE: Guia completo</h1>
+            </div>
+
+            <p>Já se perguntou como sincronizar duas tabelas no banco de dados? No começo, o normal é escrever diversos comandos <code>IF EXISTS</code>, <code>UPDATE</code> e <code>INSERT</code>. Funciona, mas a query fica gigantesca e a performance não será das melhores.</p>
+            
+            <p>Então talvez seja a hora de conhecer o comando <strong>MERGE</strong>. Neste artigo, vou detalhar como ele funciona, quando deve ser sua primeira opção em processos de ELT (Extract, Load, Transform) e quais cuidados tomar em ambientes com alta concorrência.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>1. O que é o MERGE e o que ele substitui?</h2>
+            <p>O comando <code>MERGE</code> (frequentemente chamado de "Upsert") combina operações de <code>INSERT</code>, <code>UPDATE</code> e <code>DELETE</code> em uma única transação atômica. Ele compara uma tabela de destino (Target) com uma tabela de origem (Source) através de uma condição de junção (JOIN).</p>
+            
+            <p>Ele substitui o anti-pattern tradicional de escrever instruções separadas e sequenciais. Ao invés de o motor do banco de dados varrer as tabelas várias vezes para atualizar o que existe e inserir o que é novo, o <code>MERGE</code> processa a lógica em uma única passagem.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>2. Prós, Contras e Onde Funciona</h2>
+            
+            <h3>Onde Funciona?</h3>
+            <p>A sintaxe <code>MERGE</code> é um padrão SQL (ANSI) suportado nativamente pelo Microsoft SQL Server (T-SQL), Oracle e PostgreSQL (a partir da versão 15).</p>
+
+            <h3>Vantagens (Prós)</h3>
+            <ul>
+                <li><strong>Performance em Lote:</strong> Excelente para cargas de dados (ETL/ELT), movendo dados de uma camada Staging para a camada Gold/Produção, por exemplo.</li>
+                <li><strong>Atomicidade:</strong> Se houver erro na inserção de um registro, toda a operação falha, evitando que você fique com dados atualizados pela metade.</li>
+                <li><strong>Código Limpo:</strong> A sintaxe é extremamente legível e declarativa.</li>
+            </ul>
+
+            <h3>Desvantagens (Contras e Cuidados)</h3>
+            <ul>
+                <li><strong>Concorrência (Race Conditions):</strong> Em sistemas OLTP com muitas transações simultâneas, o <code>MERGE</code> pode gerar problemas de concorrência. Se duas sessões tentarem rodar um <code>MERGE</code> na mesma tabela ao mesmo tempo, você pode acabar com chaves duplicadas.</li>
+                <li><strong>Deadlocks:</strong> Como ele faz tudo de uma vez, exige locks (bloqueios) maiores do banco de dados.</li>
+                <li><strong>A Solução:</strong> Se precisar usar em um ambiente concorrente, utilize a hint <code>HOLDLOCK</code> ou <code>NOLOCK</code> na tabela de destino para serializar o acesso.</li>
+            </ul>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>3. Cenário Prático: Sincronizando Staging e Produção como exemplo de uso</h2>
+            <p>Vamos para o código. Imagine que temos uma rotina diária que recebe o inventário de produtos. Precisamos atualizar a tabela de Produção (Target) com base nos dados que chegaram na tabela temporária (Source).</p>
+
+            <h3>Passo 1: Criando o Ambiente e Populando Dados</h3>
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">
+CREATE SCHEMA stg;
+GO
+
+CREATE TABLE dbo.Target_ProductInventory (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(100),
+    Quantity INT,
+    LastUpdated DATETIME
+);
+
+CREATE TABLE stg.Source_ProductInventory (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(100),
+    Quantity INT,
+    LastUpdated DATETIME
+);
+
+INSERT INTO dbo.Target_ProductInventory (ProductID, ProductName, Quantity, LastUpdated)
+VALUES 
+(1, 'Notebook ThinkPad', 50, '2026-08-01 10:00:00'),
+(2, 'Mouse Sem Fio', 150, '2026-08-01 10:00:00'),
+(3, 'Teclado Mecânico', 80, '2026-08-01 10:00:00'); 
+
+INSERT INTO stg.Source_ProductInventory (ProductID, ProductName, Quantity, LastUpdated)
+VALUES 
+(1, 'Notebook ThinkPad', 45, GETDATE()),  -- Existente: Baixa no estoque (Requer UPDATE)
+(2, 'Mouse Sem Fio', 150, GETDATE()),     -- Existente: Sem mudanças
+(4, 'Monitor Ultrawide', 30, GETDATE()),  -- Novo (Requer INSERT)
+(5, 'Mesa com Ajuste de Altura', 15, GETDATE()); -- Novo (Requer INSERT)
+GO</code></pre>
+            </div>
+
+            <h3>Como a tabela de Produção está ANTES do MERGE:</h3>
+            <div style="text-align: center; margin: 32px 0;">
+                <div style="max-width: 100%; border-radius: 8px; border: 1px dashed var(--border-color); padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: var(--text-color); font-family: var(--font-code);">
+                    <img src="../images/target_before_merge.png" alt="Tabela de Destino antes da execução do MERGE" class="zoomable" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0px 0px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;">
+                    <p style="font-size: 0.9rem; color: #888;">Tabela dbo.Target_ProductInventory contendo apenas 3 registros originais.</p>
+                </div>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>4. A Procedure com a Lógica do MERGE</h2>
+            <p>Agora, vamos criar a Stored Procedure que fará a sincronização. Repare em como a lógica flui naturalmente, lidando com cada cenário <code>MATCHED</code> e <code>NOT MATCHED</code>.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">USE DEVELOPMENT
+GO
+
+IF OBJECT_ID('proc_merge') IS NOT  NULL
+BEGIN 
+	DROP PROCEDURE proc_merge
+END
+
+GO
+
+CREATE PROCEDURE proc_merge
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    MERGE INTO dbo.Target_ProductInventory AS target_inv
+    USING stg.Source_ProductInventory AS source_inv
+        ON (target_inv.ProductID = source_inv.ProductID)
+
+
+    WHEN MATCHED AND target_inv.Quantity <> source_inv.Quantity THEN
+        UPDATE SET 
+            target_inv.Quantity = source_inv.Quantity,
+            target_inv.LastUpdated = source_inv.LastUpdated
+
+    WHEN NOT MATCHED BY TARGET THEN
+        INSERT (ProductID, ProductName, Quantity, LastUpdated)
+        VALUES (source_inv.ProductID, source_inv.ProductName, source_inv.Quantity, source_inv.LastUpdated)
+
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE ; 
+        
+END;
+GO
+
+EXEC proc_merge;</code></pre>
+            </div>
+
+            <h3>Como a tabela de Produção fica DEPOIS do MERGE:</h3>
+            <div style="text-align: center; margin: 32px 0;">
+                <div style="max-width: 100%; border-radius: 8px; border: 1px dashed var(--border-color); padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: var(--text-color); font-family: var(--font-code);">
+                    <img src="../images/target_after_merge.png" alt="Tabela de Destino após a execução do MERGE" class="zoomable" style="max-width: 100%; height: auto; border-radius: 8px; margin: 0px 0px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;">
+                    <p style="font-size: 0.9rem; color: #888;">Tabela sincronizada: Estoque atualizado e novos produtos inseridos.</p>
+                </div>
+            </div>
+
+            <p>O <code>MERGE</code> é uma ferramenta indispensável no cinto de utilidades de qualquer engenheiro ou desenvolvedor de banco de dados. Sabendo exatamente onde (processos em lote) e como aplicá-lo (garantindo índices corretos nas chaves de JOIN), você constrói rotinas de dados muito mais rápidas, limpas e profissionais.</p>
+            
+            <p>Obrigado pela leitura e até o próximo artigo!</p>
+
+        </article>
+
+    </main>
+
+<footer>
+        <p>&copy; 2026 - Vinicius</p>
+    </footer>
+
+    <div id="image-modal" class="modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="zoomed-image">
+    </div>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
