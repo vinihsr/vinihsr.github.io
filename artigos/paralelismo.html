@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paralelismo no SQL Server | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">BANCO DE DADOS // SQL SERVER // PARALELISMO // INTERNALS</div>
+                <h1 style="font-size: 3.5rem;">Paralelismo no SQL Server</h1>
+            </div>
+
+            <p>Alguns veem isso como um assunto simples, outros nunca configuraram. Por falta domínio incompleto das técnicas necessárias para projetar e otimizar queries de forma eficaz. Este artigo disseca os fundamentos do paralelismo usando o SQL Server como base, introduzindo conceitos profundos como scans e seeks paralelos, workers, threads, tasks, contextos de execução e os coordenadores de atividade chamados Exchange Operators.</p>
+
+            <p>Sistemas frequentemente considerados como tendo carga de trabalho estritamente transacional (OLTP) contêm queries e procedures que poderiam se beneficiar enormemente do uso apropriado do paralelismo. Extrair o máximo desse recurso exige um entendimento profundo de como o agendamento, a otimização de queries e a engine de execução realmente funcionam.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>1. O interno do Paralelismo</h2>
+            <p>O conceito central do paralelismo é dividir uma tarefa entre um número de 'pessoas' (processadores) para que o tempo total exigido seja reduzido. Se você precisasse contar 3.027 balas em uma jarra a um ritmo de cinco por segundo, isso levaria mais de dez minutos. No entanto, se você e mais quatro amigos se sentarem ao redor de uma mesa, compartilhando uma única concha para pegar as balas sob demanda, a mesma tarefa pode ser concluída simultaneamente em cerca de dois minutos e meio. Esta tarefa é perfeita para o paralelismo, pois cada indivíduo é capaz de trabalhar de forma concorrente e independente.</p>
+            
+            <p>No banco, em vez de contar balas, pedimos à engine para contar linhas em uma tabela. Para tabelas pequenas, o SQL Server utilizará um plano de execução serial, utilizando apenas um worker (thread). O operador Stream Aggregate contará as linhas recebidas do Index Scan. Mas, se a tabela for grande o suficiente, o otimizador escolherá alistar workers adicionais, criando um plano de execução paralelo.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/plano_paralelo.png" alt="Plano com operadores paralelos" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">O plano possui indicadores de paralelismo</p>
+            </div>
+
+            <p>Esses pequenos ícones de setas amarelas no plano identificam operações que envolvem múltiplos workers. Conceitualmente, a execução paralela funciona como o SQL Server executando múltiplos planos seriais de forma concorrente. O número de workers adicionais que o SQL Server designa em tempo de execução para cada região paralela é conhecido como Grau de Paralelismo (DOP - Degree of Parallelism), que é escolhido logo antes de a query iniciar e é determinado pelo número de unidades lógicas de processamento visíveis pelo banco.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>2. Parallel Page Supplier: A Gestão Sob Demanda</h2>
+            <p>O SQL Server não adota uma abordagem estática dividindo as linhas igualmente entre as threads, pois isso faria uma falsa suposição de que cada linha exige o mesmo esforço e que cada query recebe uma parcela igual de recursos.</p>
+
+            <p>Em vez disso, ele utiliza um recurso do Storage Engine chamado Parallel Page Supplier para distribuir as linhas entre os workers sob demanda.</p>
+
+            <ul>
+                <li>O Parallel Page Supplier responde às requisições entregando um lote de linhas para qualquer worker que precise de mais trabalho.</li>
+                <li>Se um worker for lento, ele simplesmente fará menos solicitações e processará menos linhas, permitindo que os outros workers continuem operando em suas taxas máximas.</li>
+                <li>Este esquema baseado em demanda garante resiliência contra variações na taxa de transferência dos workers, não limitando a performance ao nível do worker mais lento.</li>
+                <li>Ele é acionado sempre que múltiplos workers leem de forma cooperativa uma estrutura de dados, seja um heap, uma tabela clusterizada ou um índice (atuando em operações de scan ou seek).</li>
+            </ul>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/parallel_page_supplier.png" alt="Fluxo do Parallel Page Supplier entregando lotes de linhas do storage engine para os workers sob demanda" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">O Parallel Page Supplier entregando páginas sob demanda a partir do storage engine</p>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>3. Schedulers, Threads e Contextos de Execução</h2>
+            <p>Para não precisar criar novas conexões separadas para cada query paralela, o motor orquestra a complexidade usando abstrações físicas e lógicas.</p>
+
+            <ul>
+                <li><strong>Schedulers:</strong> Um scheduler representa um processador lógico, permitindo ao SQL Server controle preciso sobre seu próprio agendamento de threads, garantindo que apenas uma thread cooperativa seja executável por vez.</li>
+                <li><strong>Workers (Threads):</strong> Uma abstração que representa uma thread (ou fiber) do sistema operacional, que fica vinculada a um scheduler específico durante toda a sua vida útil.</li>
+                <li><strong>Tasks:</strong> Representam uma unidade de trabalho agendada pelo SQL Server a ser executada por um único worker.</li>
+                <li><strong>Execution Contexts (Contextos de Execução):</strong> É o ambiente estrutural onde a task ocorre. O SQL Server cria contextos de execução preenchendo detalhes no tempo de execução, como referências a tabelas temporárias e valores de variáveis. O contexto de execução principal, chamado de contexto zero, é processado pela thread zero, assumindo o papel especial de 'coordenador'.</li>
+            </ul>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/hierarquia_execucao_paralela.png" alt="Hierarquia de execução paralela: do DOP ao scheduler, worker, task e execution context" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">A cadeia de abstrações do DOP até o contexto de execução</p>
+            </div>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>4. O Exchange Operator: A junção</h2>
+            <p>O ingrediente final e mais vital em um plano paralelo é o Exchange Operator (Operador de Troca). Ele atua como a "cola" conectando os contextos de execução, sendo o único operador no plano que interage diretamente com mais de um worker.</p>
+
+            <p>Logicamente, o Exchange Operator aparece de três formas:</p>
+            <ul>
+                <li><strong>Gather Streams:</strong> Consolida fluxos de múltiplas threads em uma.</li>
+                <li><strong>Distribute Streams:</strong> Pega um fluxo de entrada e o espalha para múltiplas threads.</li>
+                <li><strong>Repartition Streams:</strong> Redistribui linhas nas interfaces entre duas regiões paralelas.</li>
+            </ul>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/exchange_operator_tipos.png" alt="As três formas lógicas do Exchange Operator: distribute streams, repartition streams e gather streams" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">As três formas lógicas do Exchange Operator</p>
+            </div>
+
+            <h3>O Design Interno do Exchange</h3>
+            <p>Fisicamente, este operador é sub-dividido em Producers (que se conectam aos workers de entrada, empacotando linhas em buffers na memória) e Consumers (que se conectam aos workers de saída, lendo as linhas desses buffers quando solicitados). O uso de buffers em memória implementa um controle de fluxo para impedir que produtores rápidos ultrapassem consumidores lentos.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/exchange_producer_consumer.png" alt="Estrutura física do Exchange Operator: producers, buffer em memória e consumers" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">Producers e Consumers conectados por buffers em memória</p>
+            </div>
+            
+            <h3>Roteamento de Dados (Partitioning Types)</h3>
+            <p>Para determinar qual consumidor receberá cada linha, o Exchange utiliza cinco tipos de estratégias de particionamento:</p>
+            <ul>
+                <li><strong>Hash:</strong> O consumidor é escolhido executando uma função de hash em um ou mais valores de colunas da linha.</li>
+                <li><strong>Round Robin:</strong> Cada nova linha é enviada ao próximo consumidor seguindo uma sequência fixa.</li>
+                <li><strong>Broadcast:</strong> Cada linha de entrada é enviada integralmente para todos os consumidores simultaneamente.</li>
+                <li><strong>Demand:</strong> A linha é enviada para o primeiro consumidor que a pedir.</li>
+                <li><strong>Range:</strong> Cada consumidor recebe uma faixa exclusiva e sem sobreposição de valores.</li>
+            </ul>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/particionamento_exchange.png" alt="As cinco estratégias de particionamento do Exchange Operator: hash, round robin, broadcast, demand e range" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">As cinco estratégias de roteamento de dados do Exchange</p>
+            </div>
+
+            <blockquote>
+                <strong>Preservação de Ordem:</strong> Operadores de troca também podem ser configurados para preservar a ordenação de entrada. Conhecidos como merging exchanges e identificados pelo atributo Order By, eles não realizam nenhuma ordenação física; eles são estritamente limitados a preservar a mesma ordem de classificação com a qual as linhas chegaram aos seus inputs.
+            </blockquote>
+
+            <h3>Resumo do fluxo</h3>
+            <p>Para que fixe melhor em sua mente e que não falte recursos para quando pensar em paralelismo:</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+                <img src="../images/fluxo_paralelismo_total.png" alt="Fluxo de execução paralela" class="zoomable" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;">
+                <p style="font-family: var(--font-code); font-size: 0.85rem; opacity: 0.7; margin-top: 12px;">Fluxo total</p>
+            </div>
+
+            <p>Dominar os bastidores da execução paralela significa abandonar o olhar superficial sobre o hardware. Através da intersecção de Exchange Operators e do Parallel Page Supplier, o SQL Server permite que consultas ganhem automaticamente as vantagens do processamento multi-core moderno, sem exigir que o desenvolvedor lide com o peso e as armadilhas de designs multithreaded complexos.</p>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <div id="image-modal" class="modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="zoomed-image">
+    </div>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
