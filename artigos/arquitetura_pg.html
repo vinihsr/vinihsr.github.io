@@ -123,7 +123,7 @@ EXPLAIN EXECUTE nome_do_prepared(valor);</code></pre>
             <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
 
             <h2>Com o plano decidido — custom, genérico, ou recém-planejado sem PREPARE — a query segue pro Executor:</h2>
-            <p>Roda a árvore do plano de baixo pra cima, puxando linhas conforme necessário, do mesmo jeito conceitual do SQL Server. O resultado também não é montado inteiro no servidor: ele é transmitido em stream pelo protocolo libpq, linha por linha, à medida que é produzido — o mesmo comportamento do TDS no SQL Server, incluindo a mesma armadilha de diagnóstico: se o client processa devagar, o Postgres fica esperando ele consumir, o que aparece como wait ClientRead — o equivalente ao ASYNC_NETWORK_IO, e igualmente fácil de confundir com "problema de rede" quando não é.</p>
+            <p>Roda a árvore do plano de baixo pra cima, puxando linhas conforme necessário, do mesmo jeito conceitual do SQL Server. O resultado também não é montado inteiro no servidor: ele é transmitido em stream pelo protocolo libpq, linha por linha, à medida que é produzido — o mesmo comportamento do TDS no SQL Server, incluindo a mesma armadilha de diagnóstico: se o client processa devagar, o Postgres fica esperando ele consumir, o que aparece como wait ClientWrite — o equivalente ao ASYNC_NETWORK_IO, e igualmente fácil de confundir com "problema de rede" quando não é.</p>
 
             <p>O que acontece dentro dessa execução — como o Postgres controla concorrência sem os locks pessimistas do SQL Server, por que praticamente não existe lock escalation aqui, e por que VACUUM é rotina essencial — é assunto grande o suficiente pra ganhar um novo artigo, com diagrama próprio.</p>
 
