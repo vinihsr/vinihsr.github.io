@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integração entre SQL Server e Data Lake | Vinicius Henrique</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <div class="container navbar">
+            <div class="logo">root@vini:~#</div>
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="../index.html">Home</a></li>
+                    <li><a href="../artigos.html" class="active">Artigos</a></li>
+                    <li><a href="../projetos.html">Projetos</a></li>
+                    <li><a href="../contato.html">Contato</a></li>
+                </ul>
+                <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                    <span class="iconify" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        
+        <article class="article-body">
+            
+            <a href="../artigos.html" style="display: inline-block; margin-bottom: 24px; text-decoration: none; font-family: var(--font-code); font-weight: 600; color: var(--text-color);">&larr; Voltar</a>
+
+            <div class="article-header">
+                <div class="tech-tag">2026 // BANCO DE DADOS // PARQUET // INTERNALS // DATA ENGINEERING</div>
+                <h1 style="font-size: 3.5rem;">Integração SQL Server e Data Lake: Avaliação de Performance e CETAS</h1>
+            </div>
+
+            <p>A integração do SQL Server com Data Lakes permite que a engine relacional acesse e processe dados distribuídos, facilitando a construção de pipelines de dados em arquiteturas modernas. Este documento detalha os aspectos técnicos que influenciam a performance de I/O e computação nesta arquitetura, além de apresentar a implementação técnica utilizando os comandos CETAS (Create External Table As Select) e OPENROWSET.</p>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>1. Arquitetura Interna e Justificativas Técnicas</h2>
+            
+            <p>A leitura e gravação de dados através da rede exigem otimizações em nível de sistema de arquivos e execução de consultas para evitar a degradação de performance do banco de dados local. A escolha do formato de arquivo e a estruturação física dos dados são determinantes neste processo.</p>
+
+            <ul>
+                <li><strong>Vantagens do Armazenamento Colunar (Parquet):</strong> O formato Parquet organiza os dados em colunas em vez de linhas. Esta estrutura facilita a aplicação de algoritmos de compressão eficientes (como Dictionary Encoding e Run-Length Encoding), reduzindo o espaço de armazenamento de forma substancial. Ademais, permite a projeção colunar, onde apenas as colunas especificadas no <code>SELECT</code> são lidas do disco e transferidas pela rede.</li>
+                <li><strong>Predicate Pushdown:</strong> Ao executar uma consulta com filtros (cláusula <code>WHERE</code>) através do <code>OPENROWSET</code>, o SQL Server tem a capacidade de delegar a avaliação desses filtros para a camada de armazenamento subjacente. Utilizando os metadados presentes no rodapé (footer) dos <em>Row Groups</em> do arquivo Parquet (como valores mínimos e máximos por bloco), a engine lê apenas os blocos que satisfazem os critérios da consulta, minimizando o volume de dados processados.</li>
+                <li><strong>Problemas Relacionados ao Tamanho dos Arquivos:</strong> O processamento de um grande número de arquivos pequenos introduz um alto custo (overhead) no sistema devido à necessidade de abrir requisições HTTP individuais, ler os metadados de cada arquivo e fechá-los posteriormente. Para otimizar o <em>throughput</em> de leitura sequencial em storages de objeto, as melhores práticas de engenharia de dados recomendam a consolidação de arquivos Parquet em tamanhos variando entre 100 MB e 1 GB.</li>
+                <li><strong>Impacto da Tipagem de Dados e Operações no TempDB:</strong> É imperativo manter a consistência dos tipos de dados (Data Types) entre o esquema relacional e o arquivo externo. Discrepâncias de tipagem forçam o otimizador do SQL Server a realizar conversões implícitas (Implicit Casts). Isso inibe a capacidade de aplicar o <em>Predicate Pushdown</em>, resultando na transferência integral do conjunto de dados pela rede para a memória local. Consequentemente, operações de <em>Join</em> ou ordenação que excedam a memória alocada (Memory Grant) resultarão em <em>Spills</em> para o disco físico no banco de dados <code>tempdb</code>, degradando severamente a performance.</li>
+            </ul>
+
+            <hr style="margin: 48px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <h2>2. Implementação Prática: Configuração de Acesso e Operações CETAS</h2>
+            
+            <p>O processo de exportação e leitura de dados externos requer a configuração inicial de objetos de segurança (credenciais) e mapeamento do Data Lake. Os exemplos a seguir utilizam dados genéricos de vendas para ilustrar a estruturação correta dos comandos T-SQL.</p>
+
+            <h3>Passo 1: Configuração de Credenciais e Fonte de Dados Externa</h3>
+            <p>Para habilitar o acesso seguro ao Azure Blob Storage ou Azure Data Lake Storage, é necessário definir a chave mestra de criptografia, armazenar o token de acesso e mapear o diretório raiz na fonte de dados externa.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">-- 1. Criação da Chave Mestra do Banco de Dados
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'SuaSenhaComplexaAqui_123!';
+
+-- 2. Criação da Credencial de Banco de Dados (exemplo utilizando SAS Token)
+CREATE DATABASE SCOPED CREDENTIAL dl_credential
+WITH IDENTITY = 'SHARED ACCESS SIGNATURE',
+SECRET = 'sv=2022-11-02&ss=b&srt=sco&sp=rl&se=2025-01-01T00:00:00Z&st=2024-01-01T00:00:00Z&spr=https&sig=FAKE_SIGNATURE_HASH';
+
+-- 3. Criação da Fonte de Dados Externa
+CREATE EXTERNAL DATA SOURCE DS_DataLake_Sales
+WITH (
+    LOCATION = 'abs://salesdata@datalakestorage.blob.core.windows.net/2024',
+    CREDENTIAL = dl_credential
+);
+
+-- 4. Definição do Formato de Arquivo Externo
+CREATE EXTERNAL FILE FORMAT ParquetFF
+WITH (
+    FORMAT_TYPE = PARQUET,
+    DATA_COMPRESSION = 'org.apache.hadoop.io.compress.SnappyCodec'
+);</code></pre>
+            </div>
+
+            <h3>Passo 2: Exportação de Dados via CETAS</h3>
+            <p>A operação CETAS permite a extração paralela de dados do banco relacional para o Data Lake. O padrão demonstrado a seguir inclui a exclusão imediata do objeto <code>EXTERNAL TABLE</code> local após a exportação, mantendo apenas os arquivos Parquet físicos e consolidados no ambiente de armazenamento externo para posterior uso analítico.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">--------------------------[ Exportação: SalesOrder ]--------------------------
+CREATE EXTERNAL TABLE Ext_SalesOrder
+WITH (
+    LOCATION = 'SalesOrder/',
+    DATA_SOURCE = DS_DataLake_Sales,
+    FILE_FORMAT = ParquetFF        
+)
+AS 
+SELECT B.*
+FROM SalesHeader A
+INNER JOIN SalesOrderDetail B ON A.OrderID = B.OrderID
+WHERE YEAR(A.OrderDate) = 2024;
+
+-- Remoção do metadado da tabela externa (os arquivos Parquet permanecem no Data Lake)
+DROP TABLE Ext_SalesOrder;
+
+--------------------------[ Exportação: SystemAuditLog ]--------------------------
+CREATE EXTERNAL TABLE Ext_SystemAuditLog
+WITH (
+    LOCATION = 'SystemAuditLog/',
+    DATA_SOURCE = DS_DataLake_Sales,
+    FILE_FORMAT = ParquetFF        
+)
+AS
+SELECT A.*
+FROM SystemAuditLog A
+WHERE AuditDate >= '2024-01-01 00:00:00' 
+  AND AuditDate <= '2024-12-31 23:59:59';
+
+-- Remoção do metadado da tabela externa
+DROP TABLE Ext_SystemAuditLog;</code></pre>
+            </div>
+
+            <h3>Passo 3: Virtualização de Dados utilizando OPENROWSET</h3>
+            <p>Para consultar dados diretamente do Data Lake sem a necessidade de importá-los fisicamente para as tabelas relacionais do SQL Server (prevenindo o crescimento desnecessário do log de transações), a função <code>OPENROWSET</code> é aplicada.</p>
+
+            <div class="code-wrapper">
+                <button class="copy-btn">Copiar</button>
+<pre><code class="language-sql">-- Leitura direta e otimizada dos arquivos Parquet localizados no Data Lake
+SELECT TOP 100 *
+FROM OPENROWSET(
+    BULK 'SalesOrder/*.parquet',
+    FORMAT = 'PARQUET',
+    DATA_SOURCE = 'DS_DataLake_Sales'
+) AS SalesData;</code></pre>
+            </div>
+
+            <p>O isolamento das cargas de trabalho através de CETAS e <code>OPENROWSET</code> garante que as transações locais (OLTP) não sejam impactadas pela leitura de dados históricos. Ao mesmo tempo, volumes massivos de informações analíticas podem ser persistidos em formatos altamente otimizados e com custo de armazenamento reduzido. Obrigado por ler até aqui e bons estudos!</p>
+
+        </article>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2026 - Vinicius Henrique</p>
+    </footer>
+
+    <div id="image-modal" class="modal">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="zoomed-image">
+    </div>
+
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="../script.js"></script>
+</body>
+</html>
