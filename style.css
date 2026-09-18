@@ -19,8 +19,9 @@
 [data-theme="dark"] {
     --bg-color: #09090b;
     --bg-light: #18181b;
-    --text-color: #d4d4d8;
-    --title-color: #f4f4f5;
+    --text-color: #e6e5e5;
+    --title-color: #ffffff;
+    --hover-color: #afafb1;
     --primary-color: #f4f4f5; 
     --primary-hover: #e4e4e7;
     --border-color: #27272a;
@@ -74,14 +75,14 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 24px 0; 
+    padding: 12px 0; 
 }
 
 .logo {
     font-family: var(--font-code);
     font-weight: 700;
     color: var(--title-color);
-    font-size: 1.25rem;
+    font-size: 1.0rem;
     display: flex;
     align-items: center;
     text-decoration: none;
@@ -114,19 +115,18 @@ header {
 
 .nav-links a {
     text-decoration: none;
-    color: var(--text-color);
-    font-size: 1.05rem;
-    font-weight: 400;
+    color: var(--hover-color);
+    font-size: 0.875rem;
+    font-weight: 600;
     transition: color 0.2s, font-weight 0.2s;
 }
 
 .nav-links a:hover {
-    color: var(--title-color);
+    color: var(--hover-color);
 }
 
 .nav-links a.active {
     color: var(--title-color);
-    font-weight: 800;
 }
 
 .menu-toggle {
@@ -285,9 +285,9 @@ header {
 
 footer {
     text-align: center;
-    padding: 20px 0;
+    padding: 10px 0;
     font-family: var(--font-code);
-    font-size: 0.9rem;
+    font-size: 0.7rem;
     opacity: 0.6;
     border-top: 1px solid var(--border-color);
     margin-top: auto;
