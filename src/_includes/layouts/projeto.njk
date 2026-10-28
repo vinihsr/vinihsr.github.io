@@ -1,0 +1,20 @@
+---
+layout: layouts/base.njk
+---
+<main class="container main-content">
+    <article class="article-body">
+
+        <a href="/projects.html" class="back-link">&larr; Voltar</a>
+
+        <div class="article-header">
+            <div class="tech-tag">{{ topics | join(" // ") }}</div>
+            <h1>{{ title }}</h1>
+            {% if description %}<p style="opacity: 0.7;">{{ description }}</p>{% endif %}
+        </div>
+
+        {{ content | safe }}
+
+    </article>
+</main>
+
+{% include "components/image-modal.njk" %}

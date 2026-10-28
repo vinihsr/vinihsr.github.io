@@ -1,0 +1,38 @@
+---
+layout: layouts/projeto.njk
+title: "Hyper-Rent"
+description: "Plataforma de aluguel de carros focada na distribuição de dados analíticos via API."
+topics: ["NODE.JS", "REACT", "NGINX", "API REST"]
+github: "https://github.com/vinihsr/Hyper-Rent"
+---
+
+<p>O <strong>Hyper-Rent</strong> é um sistema de gerenciamento de aluguel de veículos desenhado para atuar como uma fonte de extração de dados (Data Source). Além do portal transacional para clientes, a aplicação conta com um painel administrativo voltado para a governança e distribuição de métricas via integrações seguras.</p>
+
+<h3>Arquitetura e Stack Tecnológica</h3>
+<p>A aplicação segue um modelo modular com proxy reverso para balanceamento e isolamento de rotas:</p>
+
+{% codeblock "text" %}
+Hyper-Rent/
+├── client/           # Interface (React)
+├── server/           # Backend API (Express / Node.js)
+├── nginx/            # Proxy Reverso e Gateway (Nginx)
+└── package-lock.json
+{% endcodeblock %}
+
+<h3>Módulos Principais (Data Engineering)</h3>
+<ul>
+    <li><strong>Gestão de API Keys:</strong> Motor interno de criação, permissão e revogação de chaves criptografadas para acesso seguro aos endpoints por parceiros externos ou pipelines de extração (ETL/ELT).</li>
+    <li><strong>Delivery de Dados Agregados:</strong> Endpoints projetados para fornecer dados pré-processados e sumarizados (ex: taxa de ocupação, carros por ano/modelo), mitigando a carga analítica no banco de dados operacional.</li>
+    <li><strong>Filtro de Compliance (LGPD):</strong> Implementação de regras de <em>opt-in</em> integradas aos Termos e Condições (T&C). A API restringe programaticamente o retorno de dados, expondo apenas registros transacionais de clientes que autorizaram o uso para fins analíticos.</li>
+</ul>
+
+<blockquote style="text-align: center; font-weight: bold; background-color: transparent; border-left: none;">
+    [ Status Atual: Em Desenvolvimento ]
+</blockquote>
+
+<div style="text-align: center; margin: 24px;">
+    <a href="{{ github }}" target="_blank" class="btn">
+        <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+        Acessar Repositório
+    </a>
+</div>

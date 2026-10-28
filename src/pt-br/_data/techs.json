@@ -1,0 +1,13 @@
+[
+  { "icon": "simple-icons:linux", "name": "Linux" },
+  { "icon": "simple-icons:microsoftsqlserver", "name": "SQL Server" },
+  { "icon": "simple-icons:postgresql", "name": "PostgreSQL" },
+  { "icon": "simple-icons:mysql", "name": "MySQL" },
+  { "icon": "simple-icons:python", "name": "Python" },
+  { "icon": "simple-icons:docker", "name": "Docker" },
+  { "icon": "simple-icons:amazonaws", "name": "AWS" },
+  { "icon": "simple-icons:microsoftazure", "name": "Azure" },
+  { "icon": "simple-icons:apachespark", "name": "Spark" },
+  { "icon": "simple-icons:dbt", "name": "dbt" },
+  { "icon": "simple-icons:apacheairflow", "name": "Airflow" }
+]

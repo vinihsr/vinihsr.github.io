@@ -1,0 +1,17 @@
+# Dependências do Node
+node_modules/
+
+# Pasta de saída do Eleventy (Build gerado localmente)
+_site/
+
+# Logs de execução e erros do npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

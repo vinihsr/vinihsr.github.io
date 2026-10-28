@@ -1,0 +1,21 @@
+---
+layout: /layouts/base.njk
+title: Home
+section: home
+lang: en
+permalink: en/index.html
+---
+<main class="container main-content hero">
+    <h1>Vinicius Henrique</h1>
+    <p class="hero-lead">
+        Data Engineer & Generalist DBA. Focused on infrastructure and performance improvements.
+    </p>
+    <div class="hero-actions">
+        <a href="/en/projects.html" class="btn">My Projects</a>
+        <a href="/en/articles.html" class="btn btn-secondary">Articles</a>
+    </div>
+
+    <p class="hero-tech-title">Below are some of the technologies I have experience with:</p>
+
+    {% include "components/tech-carousel.njk" %}
+</main>

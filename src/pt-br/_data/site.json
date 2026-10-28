@@ -1,0 +1,8 @@
+{
+  "logo": "root@vini:~#",
+  "nav": [
+    { "id": "home", "label": "Home", "href": "/index.html" },
+    { "id": "articles", "label": "articles", "href": "/articles.html" },
+    { "id": "projects", "label": "projects", "href": "/projects.html" }
+  ]
+}

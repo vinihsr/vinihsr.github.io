@@ -1,0 +1,51 @@
+---
+layout: layouts/projeto.njk
+title: "Weather ETL Pipeline"
+description: "Automação de coleta, processamento e armazenamento de dados climáticos executada inteiramente em containers."
+topics: ["PYTHON", "PANDAS", "POSTGRESQL", "DOCKER", "ETL"]
+github: "https://github.com/vinihsr/etl_project"
+---
+
+<p>O <strong>Weather ETL Project</strong> foi desenvolvido para automatizar a coleta contínua de dados climáticos de diversas cidades e consolidá-los em um banco de dados relacional. Trata-se de um pipeline <strong>ETL (Extract, Transform, Load)</strong> completo, encapsulado nativamente dentro de containers Docker, eliminando a necessidade de qualquer instalação local de dependências além do próprio motor de virtualização.</p>
+
+<h2>Mecânica do Pipeline</h2>
+<ul>
+    <li><strong>Extract (Extração):</strong> O script lê uma lista de cidades pré-definidas a partir de um arquivo CSV e consome dados em tempo real através da <em>WeatherAPI</em>.</li>
+    <li><strong>Transform (Transformação):</strong> Utilizando a biblioteca Pandas, os dados em formato JSON são limpos e padronizados. Os nomes das colunas são ajustados para os padrões SQL e um <em>timestamp</em> de coleta é injetado em cada registro para garantir a rastreabilidade temporal.</li>
+    <li><strong>Load (Carga):</strong> Os dados processados são carregados e anexados à tabela final em um banco de dados PostgreSQL.</li>
+</ul>
+
+<h2>Detalhes Técnicos e Infraestrutura</h2>
+<p>O projeto foi desenhado focando em resiliência e independência de serviços:</p>
+<ul>
+    <li><strong>Python:</strong> Motor central de todas as lógicas de requisição (requests) e modelagem de dados (Pandas).</li>
+    <li><strong>Docker Compose:</strong> Orquestra a subida conjunta da aplicação (script) e do banco de dados como serviços isolados na mesma rede.</li>
+    <li><strong>PostgreSQL:</strong> Camada de armazenamento que retém o histórico climático confiável para análises futuras.</li>
+    <li><strong>Healthchecks (Docker):</strong> Ponto de segurança crucial. A execução do script em Python é programada para aguardar até que o container do PostgreSQL esteja com o status "Healthy" (totalmente pronto para receber conexões), prevenindo quebras e erros de <em>timeout</em> na inicialização.</li>
+</ul>
+
+<hr class="divider">
+
+<h2>Como Executar Localmente</h2>
+
+<p>1. Crie um arquivo <code>.env</code> na raiz do projeto com as seguintes variáveis de ambiente:</p>
+{% codeblock "bash" %}
+WEATHER_API_KEY=sua_chave_aqui
+DATABASE_STRING=postgresql://postgres:vini@postgres:5432/etl
+{% endcodeblock %}
+
+<blockquote>
+    <strong>Nota:</strong> A chave de API pode ser gerada gratuitamente no portal da <a href="https://www.weatherapi.com/signup.aspx" target="_blank" style="color: var(--title-color);">WeatherAPI</a>. A string de conexão do banco já está ajustada para a rede do Docker, mas caso altere credenciais (como a senha), certifique-se de refletir as mudanças no arquivo <code>docker_compose.yml</code>.
+</blockquote>
+
+<p>2. Com o arquivo <code>.env</code> configurado, suba o ambiente completo executando:</p>
+{% codeblock "bash" %}
+docker compose -f Docker/docker_compose.yml up --build
+{% endcodeblock %}
+
+<div style="text-align: center; margin-top: 48px;">
+    <a href="{{ github }}" target="_blank" class="btn">
+        <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
+        Acessar Repositório
+    </a>
+</div>

@@ -1,0 +1,75 @@
+---
+layout: layouts/base.njk
+title: Projects | Vinicius Henrique
+section: projetos
+lang: en
+permalink: /en/projects.html
+---
+<main class="container main-content">
+    <h2 style="font-size: 2.2rem;">Projects</h2>
+    <p style="opacity: 0.7; margin-bottom: 32px;">Repository of solutions I build blending Software Engineering and Data Engineering, including both academic work and upcoming professional projects.</p>
+    
+    <div class="grid">
+        
+        <a href="/en/projects/hyper_rent.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div class="article-meta" style="margin-bottom: 12px;">IN PROGRESS // FULLSTACK // DATA ENGINEERING</div>
+            <h3 style="margin-bottom: 16px;">Hyper-Rent: Car Rental Platform & Data API</h3>
+            <p style="opacity: 0.85; font-size: 1.05rem; line-height: 1.6;">
+                Fullstack web system for vehicle rentals focused on data integration. Features an administrative panel for API Key generation, enabling secure extraction of pre-analyzed metrics.
+            </p>
+        </a>
+
+        <a href="/en/projects/databricks_finance_pipeline.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div class="article-meta" style="margin-bottom: 12px;">2026 // DATA ENGINEERING // DATABRICKS // PYSPARK</div>
+            <h3 style="margin-bottom: 16px;">Databricks Finance Pipeline</h3>
+            <p style="opacity: 0.85; font-size: 1.05rem; line-height: 1.6;">
+                End-to-end financial market data pipeline. Implementation of the Medallion Architecture (Bronze, Silver, and Gold) with PySpark processing and structured Delta Lake storage.
+            </p>
+        </a>
+
+        <a href="/en/projects/e-commerce_pyspark_pipeline.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div class="article-meta" style="margin-bottom: 12px;">2026 // DATA ENGINEERING // AIRFLOW // PYSPARK // DBT</div>
+            <h3 style="margin-bottom: 16px;">E-Commerce Analytics Pipeline</h3>
+            <p style="opacity: 0.85; font-size: 1.05rem; line-height: 1.6;">
+                Containerized local Data Lakehouse infrastructure. Daily orchestration with Airflow integrating MinIO, distributed processing with PySpark, and dimensional modeling via dbt on PostgreSQL.
+            </p>
+        </a>
+
+        <a href="/en/projects/elt_airflow.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div class="article-meta" style="margin-bottom: 12px;">2026 // DATA ENGINEERING // AIRFLOW // DBT // PYTHON</div>
+            <h3 style="margin-bottom: 16px;">ELT Pipeline: Airflow & dbt</h3>
+            <p style="opacity: 0.85; font-size: 1.05rem; line-height: 1.6;">
+                ELT pipeline orchestration consuming data from a custom REST API. Automated Python extraction and loading, with transformation applied in the final PostgreSQL layer using dbt.
+            </p>
+        </a>
+
+        <a href="/en/projects/wheater_etl_pipeline.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div class="article-meta" style="margin-bottom: 12px;">2026 // DATA ENGINEERING // PYTHON // DOCKER</div>
+            <h3 style="margin-bottom: 16px;">Weather ETL Pipeline</h3>
+            <p style="opacity: 0.85; font-size: 1.05rem; line-height: 1.6;">
+                Fully containerized automated ETL pipeline. Weather data extraction via API, structural transformation with Pandas, and loading into a PostgreSQL relational database with Healthchecks dependency management.
+            </p>
+        </a>
+
+        <a href="/en/projects/mirage_group.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div class="article-meta" style="margin-bottom: 0;">6 PROJECTS // FATEC SJC // NODE, SPRING BOOT & AI</div>
+            </div>
+            <h3 style="margin-bottom: 12px; font-size: 1.3rem;">Mirage Group (Fatec Journey)</h3>
+            <p style="opacity: 0.85; font-size: 0.95rem; line-height: 1.6; margin-bottom: 0;">
+                Central repository of my academic progression (1st to 6th semester) building real solutions for partner companies. Documents technical evolution from monolithic systems to modern architectures with Spring Boot, MongoDB, and LLM integration (RLHF).
+            </p>
+        </a>
+
+        <a href="/en/projects/zenith_health.html" class="project-item" style="transition: transform 0.2s, border-color 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div class="article-meta" style="margin-bottom: 0;">HEALTH TECH // TYPESCRIPT // LGPD // GOVERNANCE</div>
+            </div>
+            <h3 style="margin-bottom: 12px; font-size: 1.3rem;">Zenith Health</h3>
+            <p style="opacity: 0.85; font-size: 0.95rem; line-height: 1.6; margin-bottom: 0;">
+                Collaborative application developed for the clinical sector. Focused on secure anamnesis management to assist diagnoses, featuring rigorous LGPD compliance implementation, backup policies, and sensitive data deletion.
+            </p>
+        </a>
+
+    </div>
+</main>

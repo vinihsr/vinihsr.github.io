@@ -1,0 +1,12 @@
+<div class="tech-carousel">
+    <div class="carousel-track">
+        {% for round in [1, 2] %}
+            {% for tech in techs %}
+            <div class="tech-box"{% if round == 2 %} aria-hidden="true"{% endif %}>
+                <span class="iconify" data-icon="{{ tech.icon }}"></span>
+                <span>{{ tech.name }}</span>
+            </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>

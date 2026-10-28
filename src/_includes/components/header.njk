@@ -1,0 +1,23 @@
+<header>
+    <div class="container navbar">
+        <a href="{{ '/en/index.html' if lang == 'en' else '/index.html' }}" class="logo">{{ site.logo or "root@vini:~#" }}</a>
+        <div class="nav-right">
+            <ul class="nav-links" id="nav-links">
+                {% if lang == 'en' %}
+                    <li><a href="/en/index.html"{% if section == 'home' %} class="active"{% endif %}>Home</a></li>
+                    <li><a href="/en/articles.html"{% if section == 'artigos' %} class="active"{% endif %}>Articles</a></li>
+                    <li><a href="/en/projects.html"{% if section == 'projetos' %} class="active"{% endif %}>Projects</a></li>
+                {% else %}
+                    <li><a href="/index.html"{% if section == 'home' %} class="active"{% endif %}>Home</a></li>
+                    <li><a href="/articles.html"{% if section == 'artigos' %} class="active"{% endif %}>Artigos</a></li>
+                    <li><a href="/projects.html"{% if section == 'projetos' %} class="active"{% endif %}>Projetos</a></li>
+                {% endif %}
+            </ul>
+            <button id="lang-toggle" class="theme-btn" aria-label="Alternar Idioma">PT / EN</button>
+            <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+            <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
+                <span class="iconify" data-icon="mdi:menu"></span>
+            </button>
+        </div>
+    </div>
+</header>
