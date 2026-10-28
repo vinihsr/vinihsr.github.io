@@ -85,53 +85,75 @@ document.querySelectorAll('.copy-btn').forEach(button => {
     });
 });
 
-document.addEventListener("DOMContentLoaded", function() {
-    const modal = document.getElementById("image-modal");
-    const modalImg = document.getElementById("zoomed-image");
-    const closeBtn = document.querySelector(".close-modal");
+// --- 3. Alternador de Idioma (PT / EN) ---
+const langToggle = document.getElementById('lang-toggle');
+if (langToggle) {
+    langToggle.addEventListener('click', () => {
+        const currentPath = window.location.pathname;
 
-    const images = document.querySelectorAll(".zoomable");
+        // 1. Limpa qualquer prefixo de idioma existente para isolar apenas o "slug/caminho puro"
+        let purePath = currentPath
+            .replace(/^\/en/, '')
+            .replace(/^\/pt-br/, '');
 
-    if (images.length > 0 && modal) {
-        
-        images.forEach(function(img) {
-            img.onclick = function() {
-                modal.style.display = "flex"; 
-                modalImg.src = this.src;
-            }
-        });
-
-        closeBtn.onclick = function() { 
-            modal.style.display = "none";
+        // Garante que o caminho comece com barra
+        if (!purePath.startsWith('/')) {
+            purePath = '/' + purePath;
         }
 
-        window.onclick = function(event) {
-            if (event.target === modal) {
-                modal.style.display = "none";
-            }
-        }
-        
-        document.addEventListener('keydown', function(event) {
-            if (event.key === "Escape" && modal.style.display === "flex") {
-                modal.style.display = "none";
-            }
-        });
-    }
-});
+        // 2. Verifica se estamos indo para o Inglês ou para o Português
+        const isCurrentlyEnglish = currentPath.startsWith('/en');
 
+        if (isCurrentlyEnglish) {
+            // --- Mudar de INGLÊS -> PORTUGUÊS ---
+            let newPath = purePath;
 
-document.addEventListener('DOMContentLoaded', () => {
-    const langToggle = document.getElementById('lang-toggle');
-    if (langToggle) {
-        langToggle.addEventListener('click', () => {
-            const currentPath = window.location.pathname;
-            if (currentPath.startsWith('/en/')) {
-                // Vai para a versão em português (remove o /en/)
-                window.location.pathname = currentPath.replace('/en/', '/');
+            // Mapeia listagens e home
+            if (newPath === '/projects.html') newPath = '/projects.html';
+            if (newPath === '/articles.html') newPath = '/articles.html';
+            if (newPath === '/' || newPath === '/index.html') newPath = '/index.html';
+
+            // Mapeia artigos em inglês (/articles/...) para português com o prefixo exato (/pt-br/artigos/...)
+            if (newPath.startsWith('/articles/')) {
+                newPath = newPath.replace('/articles/', '/pt-br/articles/');
+            }
+            // Mapeia projetos para português (/projects/... -> /projetos/...)
+            if (newPath.startsWith('/projects/')) {
+                newPath = newPath.replace('/projects/', '/pt-br/projects/');
+            }
+
+            window.location.pathname = newPath;
+        } else {
+            // --- Mudar de PORTUGUÊS -> INGLÊS ---
+            let newPath = purePath;
+
+            // Mapeia listagens e home
+            if (newPath === '/projetos.html') newPath = '/projects.html';
+            if (newPath === '/artigos.html') newPath = '/articles.html';
+            if (newPath === '/' || newPath === '/index.html') newPath = '/index.html';
+
+            // Mapeia artigos em português com /pt-br/ para o inglês limpo (/articles/...)
+            if (newPath.startsWith('/pt-br/artigos/')) {
+                newPath = newPath.replace('/pt-br/artigos/', '/articles/');
+            }
+            // Caso tenha ficado algum /artigos/ sem o pt-br
+            if (newPath.startsWith('/artigos/')) {
+                newPath = newPath.replace('/artigos/', '/articles/');
+            }
+            // Mapeia projetos para inglês (/projetos/... -> /projects/...)
+            if (newPath.startsWith('/projetos/')) {
+                newPath = newPath.replace('/projetos/', '/projects/');
+            }
+
+            // Se for a home ou página padrão, direciona para /en/index.html
+            if (newPath === '/' || newPath === '/index.html') {
+                newPath = '/en/index.html';
             } else {
-                // Vai para a versão em inglês (adiciona /en/)
-                window.location.pathname = '/en' + (currentPath === '/' ? '/index.html' : currentPath);
+                // Adiciona o /en/ na frente de qualquer outra rota em inglês
+                newPath = '/en' + newPath;
             }
-        });
-    }
-});
+
+            window.location.pathname = newPath;
+        }
+    });
+}
