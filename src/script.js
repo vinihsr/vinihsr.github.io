@@ -8,36 +8,60 @@ if (menuToggle && navLinks) {
 }
 
 
-const themeToggle = document.getElementById('theme-toggle');
-const htmlElement = document.documentElement;
+const themeSwitch = document.getElementById('theme-switch');
 
-if (themeToggle) {
-    const currentTheme = htmlElement.getAttribute('data-theme');
-    updateToggleButton(currentTheme);
+if (themeSwitch) {
+    const root = document.documentElement;
+    const trigger = document.getElementById('theme-trigger');
+    const menu = document.getElementById('theme-menu');
+    const options = menu.querySelectorAll('[data-theme-value]');
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
 
-    themeToggle.addEventListener('click', () => {
-        const activeTheme = htmlElement.getAttribute('data-theme');
-        const newTheme = activeTheme === 'light' ? 'dark' : 'light';
-        
-        htmlElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateToggleButton(newTheme);
+    const getPref = () => root.getAttribute('data-theme-pref') || 'dark';
+
+    function applyTheme(pref) {
+        const dark = pref === 'dark' || (pref === 'system' && media.matches);
+        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        root.setAttribute('data-theme-pref', pref);
+        options.forEach(o => o.setAttribute('aria-checked', String(o.dataset.themeValue === pref)));
+    }
+
+    function openMenu() {
+        menu.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeMenu(returnFocus = false) {
+        menu.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (returnFocus) trigger.focus();
+    }
+
+    trigger.addEventListener('click', () => (menu.hidden ? openMenu() : closeMenu()));
+
+    options.forEach(option => {
+        option.addEventListener('click', () => {
+            const pref = option.dataset.themeValue;
+            try { localStorage.setItem('theme', pref); } catch (e) {}
+            applyTheme(pref);
+            closeMenu(true);
+        });
     });
-}
 
-function updateToggleButton(theme) {
-    if (!themeToggle) return;
-    themeToggle.innerHTML = theme === 'dark' ? '☀️' : '🌙';
-}
-
-const contactForm = document.getElementById('contact-form');
-if (contactForm) {
-    contactForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('name').value;
-        alert(`Obrigado pelo contato, ${name}! Mensagem enviada com sucesso.`);
-        contactForm.reset();
+    document.addEventListener('click', e => {
+        if (!themeSwitch.contains(e.target)) closeMenu();
     });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !menu.hidden) closeMenu(true);
+    });
+
+    // No modo "sistema", acompanha a mudança do SO em tempo real
+    media.addEventListener('change', () => {
+        if (getPref() === 'system') applyTheme('system');
+    });
+
+    applyTheme(getPref());
 }
 
 

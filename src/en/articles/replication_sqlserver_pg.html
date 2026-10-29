@@ -1,97 +1,98 @@
 ---
 layout: layouts/artigo.njk
-title: "Replicação: SQL Server x PostgreSQL"
-description: "Comparação entre os modelos de replicação do PostgreSQL (física e lógica) e do SQL Server (transacional, snapshot, merge e peer-to-peer), com queries de monitoramento."
+title: "Replication: SQL Server vs PostgreSQL"
+description: "Comparison between PostgreSQL replication models (physical and logical) and SQL Server replication models (transactional, snapshot, merge, and peer-to-peer), including monitoring queries."
 published: 2026
-topics: ["BANCO DE DADOS", "HADR", "SQL SERVER", "POSTGRESQL"]
+topics: ["DATABASE", "HADR", "SQL SERVER", "POSTGRESQL"]
+permalink: /en/articles/replication_sqlserver_pg.html
 ---
-<p>Este artigo descreve um dos pilares mais fundamentais da infraestrutura de dados moderna: a replicação. Seja para garantir Alta Disponibilidade (HA/DR), aliviar o nó transacional via Read Scale-Out ou isolar cargas de trabalho analíticas (OLAP), entender como os motores transmitem transações pela rede é vital para a carreira de um DBA/DBRE.</p>
+<p>This article describes one of the most fundamental pillars of modern data infrastructure: replication. Whether to ensure High Availability / Disaster Recovery (HA/DR), relieve the transactional node via Read Scale-Out, or isolate analytical workloads (OLAP), understanding how engines transmit transactions across the network is vital for a DBA/DBRE career.</p>
 
-<h2>Sabendo disso, vamos começar pelo ecossistema do PostgreSQL e seus dois modelos nativos:</h2>
-<p>No Postgres, a replicação evoluiu drasticamente e hoje se divide em duas grandes categorias bem definidas: a replicação Física e a replicação Lógica. Ambas cumprem papéis excelentes, mas trabalham com paradigmas completamente diferentes sob o capô.</p>
+<h2>With that in mind, let's start with the PostgreSQL ecosystem and its two native models:</h2>
+<p>In Postgres, replication has evolved drastically and is now divided into two well-defined broad categories: Physical replication and Logical replication. Both serve excellent purposes, but work with completely different paradigms under the hood.</p>
 
-<h3>1. Replicação Física (Streaming Replication)</h3>
-<p>A replicação física atua a nível de blocos de disco. O servidor principal (Primary) envia os registros binários do seu arquivo de log (o WAL) byte a byte, na exata ordem cronológica, para um ou mais servidores secundários (Standbys).</p>
-<p>Fisicamente, a réplica é um clone idêntico do nó primário. O processo funciona através de engrenagens bem coordenadas: o nó principal possui o processo <code>walsender</code>, que empurra o fluxo do WAL via rede para o processo <code>walreceiver</code> na réplica. A partir dali, o processo <code>startup</code> aplica essas mudanças diretamente nos arquivos de dados do nó secundário (Hot Standby), que fica aberto exclusivamente para consultas de leitura.</p>
+1. <h3>Physical Replication (Streaming Replication)</h3>
+<p>Physical replication operates at the disk block level. The Primary server sends the binary records of its log file (the WAL) byte by byte, in exact chronological order, to one or more secondary servers (Standbys).</p>
+<p>Physically, the replica is an identical clone of the primary node. The process works through well-coordinated gears: the primary node runs the <code>walsender</code> process, which pushes the WAL stream over the network to the <code>walreceiver</code> process on the replica. From there, the <code>startup</code> process applies these changes directly to the secondary node's data files (Hot Standby), which remains open exclusively for read queries.</p>
 
-{% figure "/images/postgresql_replicacao_fisica.png", "Diagrama da Arquitetura de Streaming Replication do PostgreSQL" %}
+{% figure "/images/postgresql_replicacao_fisica.png", "Diagram of PostgreSQL Streaming Replication Architecture" %}
 
-<p>Esse modelo pode rodar em modo Assíncrono (onde o Primary confirma o COMMIT sem esperar a réplica, gerando um risco mínimo de lag) ou Síncrono (onde o Primary segura o COMMIT até a réplica confirmar a gravação no WAL, priorizando consistência total sobre a latência de rede).</p>
+<p>This model can run in Asynchronous mode (where the Primary confirms the COMMIT without waiting for the replica, creating minimal lag risk) or Synchronous mode (where the Primary holds the COMMIT until the replica confirms writing to the WAL, prioritizing total consistency over network latency).</p>
 
-<h3>2. Replicação Lógica (Logical Replication)</h3>
-<p>Introduzida na versão 10, a replicação lógica abandona os blocos físicos de disco e adota o modelo de Publicação e Subscrição (Publish-Subscribe) baseado na identidade das linhas das tabelas.</p>
-<p>O nó de origem decodifica o WAL binário em comandos lógicos estruturados (ex: "Inserir ID 5 na tabela Clientes"). Isso traz uma granularidade fantástica: você pode optar por replicar apenas tabelas específicas, consolidar dados de múltiplos servidores em um único Data Warehouse analítico, ou realizar upgrades de versão do banco de dados com praticamente zero de downtime, já que ela aceita tráfego entre versões diferentes do Postgres.</p>
+<h3>2. Logical Replication</h3>
+<p>Introduced in version 10, logical replication abandons physical disk blocks and adopts a Publish-Subscribe model based on table row identities.</p>
+<p>The origin node decodes the binary WAL into structured logical commands (e.g., "Insert ID 5 into the Customers table"). This provides fantastic granularity: you can choose to replicate only specific tables, consolidate data from multiple servers into a single analytical Data Warehouse, or perform database version upgrades with practically zero downtime, as it accepts traffic between different Postgres versions.</p>
 
-{% figure "/images/postgresql_replicacao_logica.png", "Diagrama do Modelo de Publicação e Subscrição da Replicação Lógica do PostgreSQL" %}
+{% figure "/images/postgresql_replicacao_logica.png", "Diagram of PostgreSQL Logical Replication Publish-Subscribe Model" %}
 
 <blockquote>
-    Fato curioso: Ao contrário do standby físico que é estritamente travado como Read-Only, o banco que assina uma replicação lógica aceita escritas locais e permite a execução de triggers customizadas durante a inserção dos dados replicados.
+    Fun fact: Unlike the physical standby which is strictly locked as Read-Only, the database subscribing to logical replication accepts local writes and allows the execution of custom triggers during the insertion of replicated data.
 </blockquote>
 
 <hr class="divider">
 
-<h2>Após o overview do Postgres, podemos partir para o modelo tradicional do SQL Server:</h2>
-<p>Aqui precisamos desmistificar um ponto crucial. No SQL Server, o termo "Replicação" refere-se a uma tecnologia de distribuição de objetos lógicos baseados em uma subdivisão (Publisher, Distributor e Subscriber) gerenciada via SQL Server Agent. Ela não deve ser confundida com soluções puras de infraestrutura e HADR (como o AlwaysOn Availability Groups).</p>
+<h2>After the Postgres overview, we can move on to SQL Server's traditional model:</h2>
+<p>Here we need to demystify a crucial point. In SQL Server, the term "Replication" refers to a logical object distribution technology based on a subdivision (Publisher, Distributor, and Subscriber) managed via SQL Server Agent. It should not be confused with pure infrastructure and HADR solutions (such as AlwaysOn Availability Groups).</p>
 
-<h3>A Replicação Transacional (Transactional Replication)</h3>
-<p>É o modelo incremental em tempo real mais utilizado para Read Scale-Out. O mecanismo funciona em três etapas fundamentais:</p>
+<h3>Transactional Replication</h3>
+<p>This is the most widely used incremental real-time model for Read Scale-Out. The mechanism operates in three fundamental stages:</p>
 <ul>
-    <li><strong>Publisher (Editor):</strong> O banco de dados de produção que disponibiliza as tabelas (chamadas de artigos) agrupadas em uma publicação.</li>
-    <li><strong>Distributor (Distribuidor):</strong> O coração do fluxo. Possui uma base de sistema própria chamada <code>distribution</code> que armazena temporariamente os comandos antes do envio final.</li>
-    <li><strong>Subscriber (Assinante):</strong> O banco de destino que recebe e consolida as transações.</li>
+    <li><strong>Publisher:</strong> The production database that provides the tables (called articles) grouped into a publication.</li>
+    <li><strong>Distributor:</strong> The heart of the workflow. It holds a dedicated system database called <code>distribution</code> that temporarily stores commands before final delivery.</li>
+    <li><strong>Subscriber:</strong> The destination database that receives and consolidates the transactions.</li>
 </ul>
 
-<p>Sob o capô, o agente <strong>Log Reader Agent</strong> escaneia o arquivo de log (<code>.ldf</code>) do Publisher em busca de alterações nos artigos publicados. Ao encontrá-las, ele move os comandos para o Distribuidor. Em seguida, o <strong>Distribution Agent</strong> assume a tarefa de descarregar e executar essas transações cronologicamente no Subscriber.</p>
+<p>Under the hood, the <strong>Log Reader Agent</strong> scans the Publisher's transaction log file (<code>.ldf</code>) looking for modifications to published articles. Upon finding them, it moves the commands to the Distributor. Next, the <code>Distribution Agent</code> takes over the task of unloading and executing these transactions chronologically on the Subscriber.</p>
 
-{% figure "/images/sqlserver_replicacao_transacional.png", "Diagrama da Arquitetura da Replicação Transacional do SQL Server" %}
+{% figure "/images/sqlserver_replicacao_transacional.png", "Diagram of SQL Server Transactional Replication Architecture" %}
 
 <blockquote>
-    Diferença Crítica: Enquanto a Replicação Transacional distribui objetos lógicos de forma customizável (permitindo índices diferentes no destino), o AlwaysOn AG atua de forma física, transmitindo blocos de log de transações inteiros para manter réplicas idênticas a nível de banco de dados para failover.
+    Critical Difference: While Transactional Replication distributes customizable logical objects (allowing different indexes on the destination), AlwaysOn AG acts physically, transmitting entire transaction log blocks to maintain identical databases at the database level for failover.
 </blockquote>
 
 <hr class="divider">
 
-<h3>Os outros modelos de replicação do SQL Server</h3>
-<p>A Replicação Transacional é o modelo mais popular, mas está longe de ser o único. O SQL Server oferece mais três variações, cada uma resolvendo um problema de topologia diferente: dados que mudam pouco, dispositivos que ficam offline, e escrita distribuída geograficamente.</p>
+<h3>Other SQL Server Replication Models</h3>
+<p>Transactional Replication is the most popular model, but it is far from the only one. SQL Server offers three additional variations, each solving a different topology problem: infrequently changed data, offline devices, and geographically distributed writes.</p>
 
-<h3>Replicação Snapshot (Snapshot Replication)</h3>
-<p>É o modelo mais simples de todos e, na prática, serve de base para inicializar os outros dois (toda publicação de Merge ou Transacional começa com um snapshot inicial). Diferente da Transacional, ela não monitora o log de transações continuamente — não existe granularidade incremental.</p>
-<p>O agente responsável é o <strong>Snapshot Agent</strong>, que gera periodicamente uma cópia completa do esquema e dos dados dos artigos publicados, salvando arquivos <code>.sch</code> (schema) e <code>.bcp</code> (dados, via bulk copy) na pasta de snapshot do Distribuidor. O Distribution Agent então aplica essa cópia inteira no Subscriber, substituindo a versão anterior.</p>
+<h3>Snapshot Replication</h3>
+<p>This is the simplest model of all and, in practice, serves as the baseline to initialize the other two (every Merge or Transactional publication starts with an initial snapshot). Unlike Transactional replication, it does not continuously monitor the transaction log—there is no incremental granularity.</p>
+<p>The responsible agent is the <strong>Snapshot Agent</strong>, which periodically generates a complete copy of the schema and data for published articles, saving <code>.sch</code> (schema) and <code>.bcp</code> (data, via bulk copy) files in the Distributor's snapshot folder. The Distribution Agent then applies this entire copy to the Subscriber, replacing the previous version.</p>
 
-{% figure "/images/sqlserver_replicacao_snapshot.png", "Diagrama da Arquitetura da Replicação Snapshot do SQL Server" %}
+{% figure "/images/sqlserver_replicacao_snapshot.png", "Diagram of SQL Server Snapshot Replication Architecture" %}
 
-<p>Por não gerar tráfego contínuo, é ideal para tabelas de baixa volatilidade (tabelas de domínio, catálogos de produtos) ou cenários onde uma janela de atualização diária/semanal é aceitável.</p>
+<p>Because it does not generate continuous traffic, it is ideal for low-volatility tables (lookup tables, product catalogs) or scenarios where a daily/weekly update window is acceptable.</p>
 
-<h3>Replicação de Merge (Merge Replication)</h3>
-<p>Aqui a via deixa de ser única. A Replicação de Merge permite que tanto o Publisher quanto os Subscribers façam alterações independentes nos mesmos dados — inclusive offline — e sincronizem tudo posteriormente. É o modelo clássico para força de campo (vendedores, técnicos) que trabalham desconectados e sincronizam ao voltar à rede.</p>
-<p>O mecanismo depende de triggers automáticas instaladas em cada tabela publicada, que registram toda alteração em tabelas de rastreamento do sistema (<code>MSmerge_contents</code> e <code>MSmerge_tombstone</code>), identificando cada linha por uma coluna <code>rowguid</code> exclusiva. O <strong>Merge Agent</strong> é quem varre essas tabelas de rastreamento em ambos os nós e aplica as mudanças pendentes nas duas direções.</p>
+<h3>Merge Replication</h3>
+<p>Here the pathway ceases to be one-way. Merge Replication allows both the Publisher and Subscribers to make independent changes to the same data—even offline—and synchronize everything later. It is the classic model for field forces (sales reps, technicians) who work disconnected and synchronize upon returning to the network.</p>
+<p>The mechanism relies on automated triggers installed on each published table, recording every change in system tracking tables (<code>MSmerge_contents</code> and <code>MSmerge_tombstone</code>), identifying each row by a unique <code>rowguid</code> column. The <strong>Merge Agent</strong> is responsible for scanning these tracking tables on both nodes and applying pending changes in both directions.</p>
 
-{% figure "/images/sqlserver_replicacao_merge.png", "Diagrama da Arquitetura da Replicação de Merge do SQL Server" %}
+{% figure "/images/sqlserver_replicacao_merge.png", "Diagram of SQL Server Merge Replication Architecture" %}
 
 <blockquote>
-    Fato curioso: Como duas pontas podem alterar a mesma linha simultaneamente enquanto offline, o Merge precisa de um resolvedor de conflitos. Por padrão, o SQL Server usa resolução por prioridade (a alteração do nó com maior <em>priority number</em> vence), mas é possível programar resolvedores customizados via COM ou .NET para regras de negócio específicas.
+    Fun fact: Because two endpoints can alter the same row simultaneously while offline, Merge requires a conflict resolver. By default, SQL Server uses priority-based resolution (the change from the node with the higher <em>priority number</em> wins), but custom resolvers can be programmed via COM or .NET for specific business rules.
 </blockquote>
 
 <h3>Peer-to-Peer Replication</h3>
-<p>É uma variação da Replicação Transacional pensada para topologias multi-master: em vez de um único Publisher, todos os nós participantes são simultaneamente Publisher e Subscriber uns dos outros. Cada nó roda seu próprio Log Reader Agent e Distribution Agent, propagando as transações para todos os outros nós da malha.</p>
-<p>O objetivo aqui não é tolerância a conflitos (o SQL Server não resolve conflitos automaticamente nesse modelo), mas sim disponibilidade de escrita distribuída geograficamente — cada região grava localmente e replica para as demais, geralmente com particionamento lógico de dados por nó para evitar que duas pontas escrevam a mesma linha.</p>
+<p>This is a variation of Transactional Replication designed for multi-master topologies: instead of a single Publisher, all participating nodes simultaneously act as both Publisher and Subscriber to one another. Each node runs its own Log Reader Agent and Distribution Agent, propagating transactions to all other nodes in the mesh.</p>
+<p>The goal here is not conflict tolerance (SQL Server does not automatically resolve conflicts in this model), but rather geographically distributed write availability—each region writes locally and replicates to the others, typically with logical data partitioning per node to prevent two endpoints from writing to the same row.</p>
 
-{% figure "/images/sqlserver_peer_to_peer.png", "Diagrama da Arquitetura da Peer-to-Peer Replication do SQL Server" %}
+{% figure "/images/sqlserver_peer_to_peer.png", "Diagram of SQL Server Peer-to-Peer Replication Architecture" %}
 
 <blockquote>
-    Regra de ouro: escolha o modelo pela natureza do dado, não pela familiaridade com a ferramenta. Dado que muda pouco e tolera atraso → Snapshot. Dado que precisa ser editado offline e reconciliado depois → Merge. Escrita distribuída sem overlap de linhas entre regiões → Peer-to-Peer. Leitura em tempo real a partir de uma única fonte de verdade → Transacional.
+    Golden Rule: Choose the model based on data nature, not tool familiarity. Data that changes rarely and tolerates lag → Snapshot. Data that needs to be edited offline and reconciled later → Merge. Distributed writes with no row overlap between regions → Peer-to-Peer. Real-time reading from a single source of truth → Transactional.
 </blockquote>
 
 <hr class="divider">
 
-<h2>Queries essenciais de monitoramento para o dia a dia</h2>
-<p>Para mitigar esses incidentes, o monitoramento preventivo do lag e dos estados de retenção é obrigatório. Seguem os comandos práticos de partida:</p>
+<h2>Essential Day-to-Day Monitoring Queries</h2>
+<p>To mitigate incidents, proactive monitoring of lag and retention states is mandatory. Here are practical starting commands:</p>
 
-<h3>Para o PostgreSQL: Monitorando o Lag de replicação e Slots retidos</h3>
-<p>Esta consulta calcula a diferença em bytes entre o LSN atual gravado no Primário e o que já foi processado e retransmitido para os standbys através do processo de streaming:</p>
+<h3>For PostgreSQL: Monitoring Replication Lag and Retained Slots</h3>
+<p>This query calculates the difference in bytes between the current LSN recorded on the Primary and what has already been processed and retransmitted to standbys via the streaming process:</p>
 
 {% codeblock "sql" %}
-SELECT client_addr AS ip_replica,
+SELECT client_addr AS replica_ip,
        state,
        pg_wal_lsn_diff(pg_current_wal_lsn(), sent_lsn) AS sent_lag_bytes,
        pg_wal_lsn_diff(sent_lsn, write_lsn) AS write_lag_bytes,
@@ -100,27 +101,27 @@ SELECT client_addr AS ip_replica,
 FROM pg_stat_replication;
 {% endcodeblock %}
 
-<p>Para auditar o impacto imediato dos slots de replicação ativos e o volume acumulado em disco que eles estão forçando o cluster a manter:</p>
+<p>To audit the immediate impact of active replication slots and the accumulated disk volume they are forcing the cluster to retain:</p>
 
 {% codeblock "sql" %}
 SELECT slot_name, 
        slot_type, 
        active,
-       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS espaco_retido_wal
+       pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_wal_space
 FROM pg_replication_slots;
 {% endcodeblock %}
 
-<h3>Para o SQL Server: Monitorando ofensores de retenção no Log</h3>
-<p>Caso o log transacional de produção apresente crescimento incomum, execute a seguinte query de diagnóstico para avaliar se a Replicação ou o AlwaysOn estão impedindo a reciclagem do arquivo:</p>
+<h3>For SQL Server: Monitoring Log Retention Culprits</h3>
+<p>If the production transaction log shows unusual growth, run the following diagnostic query to evaluate if Replication or AlwaysOn is preventing file recycling:</p>
 
 {% codeblock "sql" %}
 SELECT name AS DatabaseName,
        recovery_model_desc AS RecoveryModel,
-       log_reuse_wait_desc AS MotivoRetencaoLog
+       log_reuse_wait_desc AS LogReuseWaitReason
 FROM sys.databases
 WHERE log_reuse_wait_desc IN ('REPLICATION', 'AVAILABILITY_GROUP');
 {% endcodeblock %}
 
-<p>Se o resultado retornar <code>REPLICATION</code>, significa que existem transações travadas no log que o Log Reader Agent ainda não conseguiu ler ou enviar para o banco de distribuição. Você pode complementar a investigação executando o comando <code>DBCC OPENTRAN;</code> para identificar o ID da transação mais antiga que está segurando o ponteiro ativo do arquivo.</p>
+<p>If the result returns <code>REPLICATION</code>, it means there are stuck transactions in the log that the Log Reader Agent has not yet been able to read or push to the distribution database. You can complement your investigation by running the <code>DBCC OPENTRAN;</code> command to identify the ID of the oldest active transaction holding the active file pointer.</p>
 
-<p>Essas são as engrenagens e armadilhas principais dos mecanismos de replicação. Compreender o comportamento físico desses dados transitando pela rede é o diferencial estratégico para garantir ambientes analíticos e transacionais escaláveis e resilientes. Obrigado por ler até aqui e bons estudos!</p>
+<p>These are the core gears and pitfalls of replication mechanisms. Understanding the physical behavior of data traversing the network is a strategic differentiator to ensure scalable and resilient analytical and transactional environments. Thanks for reading this far, and happy studying!</p>

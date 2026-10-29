@@ -1,146 +1,148 @@
 ---
 layout: layouts/artigo.njk
-title: "SQL Server no Linux: Guia inicial"
-description: "Guia para o DBA SQL Server no Linux: comandos de monitoramento (CPU, memória, I/O, serviços, logs, rede), o papel do SQLPAL, instalação via apt e ferramentas de administração."
+title: "SQL Server on Linux: Getting Started Guide"
+description: "Guide for the SQL Server DBA on Linux: monitoring commands (CPU, memory, I/O, services, logs, network), the role of SQLPAL, apt installation, and admin tools."
 published: 2026
-topics: ["BANCO DE DADOS", "LINUX", "SQL SERVER"]
+topics: ["DATABASE", "LINUX", "SQL SERVER"]
+permalink: /en/articles/linux_sqlserver.html
 ---
-<p>Esse artigo descreve um passo fundamental para o DBA SQL Server: a adaptação ao ambiente Linux. Seja para baratear custos de licenciamento de sistema operacional, padronizar pipelines com contêineres ou unificar a stack de servidores, entender como gerenciar o motor do SQL Server fora do seu habitat natural é vital.</p>
+<p>This article describes a fundamental step for the SQL Server DBA: adapting to the Linux environment. Whether to lower operating system licensing costs, standardize pipelines with containers, or unify a server stack, understanding how to manage the SQL Server engine outside its natural habitat is vital.</p>
 
-<h2>Sabendo disso, vamos começar pelo choque de realidade: sair do conforto do Windows Server.</h2>
-<p>No ecossistema do PostgreSQL, o Linux é a casa nativa. DBAs de Postgres estão acostumados a gerenciar processos, analisar consumo de memória e fazer o troubleshooting de I/O diretamente pelo terminal. Para os DBAs de SQL Server, que historicamente dependem do Task Manager, do PerfMon e do SSMS para tudo, a tela preta pode parecer hostil. Mas os conceitos são os mesmos, apenas as ferramentas mudam.</p>
+<h2>With that in mind, let's start with the reality check: leaving the comfort of Windows Server.</h2>
+<p>In the PostgreSQL ecosystem, Linux is the native home. Postgres DBAs are accustomed to managing processes, analyzing memory consumption, and troubleshooting I/O directly via the terminal. For SQL Server DBAs, who historically depend on Task Manager, PerfMon, and SSMS for everything, the black screen can feel hostile. But the concepts are the same; only the tools change.</p>
 
-<p>Quando o servidor apresenta lentidão, a primeira reação no Windows é abrir o Task Manager. No Linux, nós acessamos o terminal e utilizamos ferramentas nativas que leem diretamente as informações do kernel.</p>
+<p>When a server experiences slowdowns, the first reaction on Windows is to open the Task Manager. On Linux, we access the terminal and use native tools that read information directly from the kernel.</p>
 
-<h3>1. CPU e Memória (O substituto do Task Manager)</h3>
-<p>Para monitoramento em tempo real de processos, o comando clássico é o <code>top</code> (ou <code>htop</code>, sua versão aprimorada e interativa). Ele entrega a visão do consumo de CPU por núcleo, uso de memória RAM e Swap. Para o SQL Server, você vai procurar pelo processo principal chamado <code>sqlservr</code>.</p>
+1. <h3>CPU and Memory (The Task Manager Replacement)
+</h3>
+<p>For real-time process monitoring, the classic command is <code>top</code> (or <code>htop</code>, its enhanced, interactive version). It provides a view of CPU consumption per core, RAM usage, and Swap. For SQL Server, you'll look for the main process named <code>sqlservr</code>.</p>
 
 {% codeblock "bash" %}
-# Abre o monitor de processos interativo. Pressione 'F4' para filtrar por 'sqlservr' e 'q' para sair.
+# Opens the interactive process monitor. Press 'F4' to filter by 'sqlservr' and 'q' to exit.
 htop
 {% endcodeblock %}
 
-<p>Se você precisa de uma visão rápida e estática apenas do consumo global de memória RAM (total, usada, livre e em cache/buffer), o comando <code>free</code> é a escolha certa:</p>
+<p>If you need a quick, static overview solely of global RAM memory consumption (total, used, free, and cached/buffered), the <code>free</code> command is the right choice:</p>
 
 {% codeblock "bash" %}
-# Exibe o uso de memória do sistema em formato legível para humanos (Megabytes/Gigabytes)
+# Displays system memory usage in a human-readable format (Megabytes/Gigabytes)
 free -h
 {% endcodeblock %}
 
-<h3>2. Armazenamento e I/O (O substituto do Windows Explorer e Resource Monitor)</h3>
-<p>Diferente do Windows com seus discos C:, D: e E:, o Linux usa uma árvore de diretórios unificada montada na raiz (/). Para verificar o espaço livre em disco, usamos o <code>df -h</code>. Para saber o tamanho de uma pasta específica (como os dados do banco), usamos o <code>du -sh</code>.</p>
+<h3>2. Storage and I/O (The Windows Explorer and Resource Monitor Replacement)</h3>
+<p>Unlike Windows with its C:, D:, and E: drives, Linux uses a unified directory tree mounted at the root (/). To check free disk space, we use <code>df -h</code>. To find out the size of a specific folder (such as database files), we use <code>du -sh</code>.</p>
 
 {% codeblock "bash" %}
-# Verifica o espaço livre em todas as partições montadas
+# Checks free space across all mounted partitions
 df -h
 
-# Verifica o tamanho total do diretório de dados padrão do SQL Server
+# Checks the total size of the default SQL Server data directory
 sudo du -sh /var/opt/mssql/data/
 {% endcodeblock %}
 
-<p>Mas para um DBA, espaço livre não basta; precisamos ver o gargalo de leitura e escrita (I/O). O <code>iostat</code> é fundamental para medir as IOPS e a latência de disco no momento de lentidão:</p>
+<p>But for a DBA, free space isn't enough; we need to see read and write bottlenecks (I/O). <code>iostat</code> is essential for measuring IOPS and disk latency during slowdowns:</p>
 
 {% codeblock "bash" %}
-# Exibe estatísticas estendidas de I/O em disco, atualizando a cada 2 segundos
+# Displays extended disk I/O statistics, refreshing every 2 seconds
 iostat -xd 2
 {% endcodeblock %}
 
 <blockquote>
-    Fato curioso: A Microsoft manteve a estrutura lógica tão fiel que os arquivos de dados continuam sendo .mdf, .ndf e .ldf, mesmo rodando em um sistema de arquivos ext4 ou XFS no Linux.
+    Fun fact: Microsoft kept the logical structure so faithful that data files continue to be .mdf, .ndf, and .ldf, even running on an ext4 or XFS file system on Linux.
 </blockquote>
 
-<h3>3. Serviços e Logs do SO (O substituto do services.msc e Event Viewer)</h3>
-<p>No Linux moderno, quem gerencia os serviços rodando em background (daemons) é o systemd. Em vez de abrir painéis gráficos para reiniciar o serviço do banco, tudo é feito via <code>systemctl</code>. E para ler os logs registrados pelo SO (caso o serviço tenha "crachado" antes mesmo de iniciar o SQL), usamos o <code>journalctl</code>.</p>
+<h3>3. Services and OS Logs (The services.msc and Event Viewer Replacement)</h3>
+<p>In modern Linux, background services (daemons) are managed by systemd. Instead of opening graphical panels to restart the database service, everything is done via <code>systemctl</code>. And to read logs recorded by the OS (in case the service crashed before SQL even started), we use <code>journalctl</code>.</p>
 
 {% codeblock "bash" %}
-# Verifica se o SQL Server está rodando, se falhou ou se está inativo
+# Checks whether SQL Server is running, failed, or inactive
 sudo systemctl status mssql-server
 
-# Para reiniciar o serviço do SQL Server brutalmente
+# To forcefully restart the SQL Server service
 sudo systemctl restart mssql-server
 
-# Lê os últimos 50 logs de sistema gerados especificamente pelo SQL Server
+# Reads the last 50 system logs generated specifically by SQL Server
 sudo journalctl -u mssql-server -n 50
 {% endcodeblock %}
 
-<h3>4. Lendo Logs Internos e Arquivos (O substituto do Notepad / SSMS Log Viewer)</h3>
-<p>No Windows, você abriria o SSMS ou o Bloco de Notas para analisar o famoso <code>ERRORLOG</code> do SQL Server. No Linux, nós lemos arquivos de texto gigantescos instantaneamente pelo terminal sem travamentos. O <code>tail</code> lê o final do arquivo, enquanto o <code>grep</code> atua como um "Ctrl+F", buscando trechos específicos.</p>
+<h3>4. Reading Internal Logs and Files (The Notepad / SSMS Log Viewer Replacement)</h3>
+<p>On Windows, you would open SSMS or Notepad to analyze the famous SQL Server <code>ERRORLOG</code>. On Linux, we read giant text files instantly via the terminal without freezing. <code>tail</code> reads the end of the file, while <code>grep</code> acts like a "Ctrl+F", searching for specific snippets.</p>
 
 {% codeblock "bash" %}
-# Exibe as últimas linhas do ERRORLOG em tempo real (acompanhando a gravação ao vivo)
+# Displays the last lines of the ERRORLOG in real-time (following live writes)
 tail -f /var/opt/mssql/log/errorlog
 
-# Busca exclusivamente por falhas de login (Login failed) dentro do ERRORLOG
+# Searches exclusively for login failures (Login failed) inside the ERRORLOG
 grep "Login failed" /var/opt/mssql/log/errorlog
 {% endcodeblock %}
 
-<h3>5. Rede e Conectividade (O substituto do netstat do Windows)</h3>
-<p>A aplicação não consegue conectar? Antes de culpar o banco, você precisa verificar se o SQL Server realmente subiu e se está escutando na porta correta (1433 por padrão). O comando <code>ss</code> (Socket Statistics) substitui o netstat.</p>
+<h3>5. Network and Connectivity (The Windows netstat Replacement)</h3>
+<p>The application can't connect? Before blaming the database, you need to verify if SQL Server actually started up and is listening on the correct port (1433 by default). The <code>ss</code> (Socket Statistics) command replaces netstat.</p>
 
 {% codeblock "bash" %}
-# Lista as portas TCP abertas (Listening), numéricas, e mostra qual processo as está usando
+# Lists open TCP ports (Listening), numerically, and shows which process is using them
 sudo ss -tlnp | grep sqlservr
 {% endcodeblock %}
 
 <hr class="divider">
 
-<h2>Como funciona o SQL Server no Linux por baixo dos panos?</h2>
-<p>Aqui precisamos minar um ponto crucial. Diferente do PostgreSQL, que foi escrito com chamadas diretas às APIs nativas do kernel Linux (POSIX), o motor relacional do SQL Server possui milhões de linhas de código fortemente atreladas às APIs do Windows (Win32).</p>
+<h2>How does SQL Server on Linux work under the hood?</h2>
+<p>Here we need to address a crucial point. Unlike PostgreSQL, which was written with direct calls to native Linux kernel APIs (POSIX), the SQL Server relational engine contains millions of lines of code heavily tied to Windows APIs (Win32).</p>
 
-<p>A Microsoft não reescreveu o SQL Server do zero. Ela criou uma camada de abstração brilhante chamada <strong>SQLPAL (SQL Server Platform Abstraction Layer)</strong>. Baseada no antigo projeto de pesquisa Drawbridge, o SQLPAL atua como um "mini sistema operacional" embutido dentro do processo do Linux. Ele traduz em tempo real as chamadas do motor do banco de dados para chamadas que o kernel do Linux consegue entender.</p>
+<p>Microsoft did not rewrite SQL Server from scratch. They created a brilliant abstraction layer called <strong>SQLPAL (SQL Server Platform Abstraction Layer)</strong>. Based on the older research project Drawbridge, SQLPAL acts as a "mini operating system" embedded inside the Linux process. It translates calls from the database engine in real time into calls that the Linux kernel can understand.</p>
 
 <ul>
-    <li><strong>Compatibilidade total:</strong> Devido ao SQLPAL, o motor continua utilizando as mesmas estruturas de agendamento (SQLOS). O banco "acha" que está no Windows.</li>
-    <li><strong>Migração transparente:</strong> É por conta dessa arquitetura que você pode fazer um backup (.bak) em um Windows Server 2022 e restaurar perfeitamente em um servidor Linux.</li>
+    <li><strong>Full Compatibility:</strong> Thanks to SQLPAL, the engine continues to use the same scheduling structures (SQLOS). The database "thinks" it is on Windows.</li>
+    <li><strong>Transparent Migration:</strong> Because of this architecture, you can take a backup (.bak) on a Windows Server 2022 and restore it perfectly on a Linux server.</li>
 </ul>
 
 <hr class="divider">
 
-<h2>Instalação e Ferramentas: Sem interface gráfica</h2>
-<p>Se você usou Linux na vida, aqui vai a maior diferença conceitual: no Windows, você entra no site da Microsoft, baixa um arquivo <code>.iso</code> de gigabytes, monta a imagem e roda um <code>setup.exe</code>. No Linux, nós usamos <strong>Gerenciadores de Pacotes</strong> (como o <code>apt</code> no Ubuntu ou <code>dnf</code> no RedHat).</p>
+<h2>Installation and Tools: No Graphical Interface</h2>
+<p>If you've used Linux in your life, here is the biggest conceptual difference: on Windows, you go to Microsoft's website, download a multi-gigabyte <code>.iso</code> file, mount the image, and run a <code>setup.exe</code>. On Linux, we use <strong>Package Managers</strong> (such as <code>apt</code> on Ubuntu or <code>dnf</code> on RedHat).</p>
 
-<p>Em vez de ir atrás do arquivo, você diz ao sistema operacional através do terminal onde estão os servidores da Microsoft, e o próprio Linux baixa, descompacta e instala tudo no lugar certo. Isso facilita a vida de quem trabalha com automação (Ansible, Terraform) e Infraestrutura como Código.</p>
+<p>Instead of hunting down a file, you tell the operating system via the terminal where Microsoft's servers are located, and Linux itself downloads, unpacks, and installs everything in the right place. This makes life easier for anyone working with automation (Ansible, Terraform) and Infrastructure as Code.</p>
 
-<p>Usando o Ubuntu como exemplo (a distribuição mais amigável para iniciantes), o processo físico se resume a estes comandos:</p>
+<p>Using Ubuntu as an example (the most beginner-friendly distribution), the physical process boils down to these commands:</p>
 
 {% codeblock "bash" %}
-# 1. Importa a chave de segurança da Microsoft (para garantir que o download é oficial)
+# 1. Imports Microsoft's security key (to ensure the download is official)
 curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
 
-# 2. Adiciona o repositório do SQL Server 2022 na "lista telefônica" do seu Linux
+# 2. Adds the SQL Server 2022 repository to your Linux "phonebook"
 curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2022.list | sudo tee /etc/apt/sources.list.d/mssql-server-2022.list
 
-# 3. Atualiza a lista de pacotes disponíveis e instala o motor do banco de dados
+# 3. Updates the list of available packages and installs the database engine
 sudo apt-get update
 sudo apt-get install -y mssql-server
 {% endcodeblock %}
 
-<p>Pronto, os binários estão instalados. Mas o banco ainda não está rodando. Falta a configuração final (collation, portas e a famosa senha do SysAdmin). Para isso, a Microsoft criou um utilitário exclusivo chamado <code>mssql-conf</code>.</p>
+<p>Done, the binaries are installed. But the database is not running yet. The final configuration is missing (collation, ports, and the famous SysAdmin password). For this, Microsoft created an exclusive utility called <code>mssql-conf</code>.</p>
 
 {% codeblock "bash" %}
-# Executa o assistente de configuração inicial interativo
+# Runs the interactive initial configuration wizard
 sudo /opt/mssql/bin/mssql-conf setup
 {% endcodeblock %}
 
-<p>Ao rodar o comando acima, o terminal fará duas perguntas cruciais para você:</p>
+<p>When running the command above, the terminal will ask you two crucial questions:</p>
 <ol>
-    <li><strong>A Edição do SQL Server:</strong> Ele vai listar opções de 1 a 8 (Evaluation, Developer, Express, Standard, Enterprise...). Digite o número correspondente à sua necessidade e Enter.</li>
-    <li><strong>A senha do <code>sa</code>:</strong> Aqui vai um detalhe que todo iniciante no Linux acaba se confundindo: por questões de segurança, <strong>ao digitar senhas no terminal, nada aparece na tela</strong>. Nem mesmo asteriscos. O Linux está capturando as teclas. Apenas digite sua senha forte e aperte Enter.</li>
+    <li><strong>The SQL Server Edition:</strong> It will list options from 1 to 8 (Evaluation, Developer, Express, Standard, Enterprise...). Type the number corresponding to your need and press Enter.</li>
+    <li><strong>The <code>sa</code> Password:</strong> Here is a detail that every beginner on Linux gets confused by: for security reasons, <strong>when typing passwords in the terminal, nothing appears on screen</strong>. Not even asterisks. Linux is capturing the keystrokes. Just type your strong password and press Enter.</li>
 </ol>
 
-<h3>E quanto à administração no dia a dia?</h3>
+<h3>What about day-to-day administration?</h3>
 
-<p>O SSMS é maravilhoso, mas é exclusivo do Windows. Para um fluxo de trabalho multiplataforma, temos duas opções principais:</p>
+<p>SSMS is wonderful, but it is exclusive to Windows. For a cross-platform workflow, we have two primary options:</p>
 
 <ul>
-    <li><strong>Azure Data Studio (ADS):</strong> É a recomendação moderna. Construída sobre o Electron (mesma base do VS Code), roda nativamente no Linux. Possui suporte excelente para T-SQL, visualização de planos de execução gráficos e extensões poderosas.</li>
-    <li><strong>DBeaver:</strong> Baseado em Java, é um cliente universal extremamente popular na comunidade Linux. Se você gerencia múltiplos motores de banco de dados no seu dia a dia, ele se conecta perfeitamente ao SQL Server (via driver JDBC) e oferece uma interface gráfica robusta e familiar que lembra bastante a flexibilidade estrutural do SSMS.</li>
-    <li><strong>sqlcmd:</strong> A ferramenta oficial de linha de comando. Essencial para quando você está conectado via SSH em um servidor sem interface gráfica e precisa executar consultas rápidas ou scripts de manutenção.</li>
+    <li><strong>Azure Data Studio (ADS):</strong> This is the modern recommendation. Built on Electron (the same base as VS Code), it runs natively on Linux. It has excellent support for T-SQL, graphical execution plan visualization, and powerful extensions.</li>
+    <li><strong>DBeaver:</strong> Java-based, it is an extremely popular universal client in the Linux community. If you manage multiple database engines in your day-to-day work, it connects seamlessly to SQL Server (via JDBC driver) and offers a robust, familiar graphical interface that strongly resembles the structural flexibility of SSMS.</li>
+    <li><strong>sqlcmd:</strong> The official command-line tool. Essential for when you are connected via SSH to a server without a graphical interface and need to run quick queries or maintenance scripts.</li>
 </ul>
 
 {% codeblock "bash" %}
-# Conectando localmente via sqlcmd para testar a instância
+# Connecting locally via sqlcmd to test the instance
 sqlcmd -S localhost -U sa -P 'SuaSenhaForte123!' -Q "SELECT @@VERSION"
 {% endcodeblock %}
 
-<p>A curva de aprendizado inicial pode assustar quem nunca saiu do ecossistema Microsoft, mas os fundamentos do motor de banco de dados permanecem os mesmos. Dominar a CLI do Linux não apenas expande seu portfólio de administração e troubleshooting, mas é o primeiro passo para orquestrar bancos de dados robustos em arquiteturas orientadas a contêineres. Obrigado por ler até aqui e bons estudos!</p>
+<p>The initial learning curve might scare anyone who has never left the Microsoft ecosystem, but the fundamentals of the database engine remain the same. Mastering the Linux CLI not only expands your administration and troubleshooting portfolio, but it's the first step toward orchestrating robust databases in container-oriented architectures. Thanks for reading this far, and happy studying!</p>

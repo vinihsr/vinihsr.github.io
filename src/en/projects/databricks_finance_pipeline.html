@@ -1,43 +1,44 @@
 ---
 layout: layouts/projeto.njk
+lang: en
 title: "Databricks Finance Pipeline"
-description: "Pipeline end-to-end consumindo dados reais de ações bancárias, fundamentado na Arquitetura Medalhão."
+description: "End-to-end pipeline consuming real-world bank stock data, built on the Medallion Architecture."
 topics: ["DATABRICKS", "PYSPARK", "DELTA LAKE", "SQL"]
 github: "https://github.com/vinihsr/databricks-finance-pipeline"
 ---
 
-<p>O <strong>Databricks Finance Pipeline</strong> é um projeto de engenharia de dados focado em ingestão, processamento e modelagem analítica estruturada. Ele consome o histórico de 2 anos de ações dos maiores bancos (JPM, BAC, GS, C, WFC) através da API <code>yfinance</code>, processando todo o ciclo de vida do dado dentro do ecossistema Databricks.</p>
+<p>The <strong>Databricks Finance Pipeline</strong> is a data engineering project focused on ingestion, processing, and structured analytical modeling. It consumes two years of stock history from the largest banks (JPM, BAC, GS, C, WFC) through the <code>yfinance</code> API, handling the entire data lifecycle inside the Databricks ecosystem.</p>
 
-<h3>Arquitetura Medalhão</h3>
-<p>O fluxo de dados foi desenhado para isolar responsabilidades, garantindo que o dado bruto seja preservado enquanto as camadas subsequentes aplicam regras de qualidade e negócio:</p>
+<h3>Medallion Architecture</h3>
+<p>The data flow was designed to separate responsibilities, ensuring that raw data is preserved while the subsequent layers apply quality and business rules:</p>
 
 {% codeblock "text" %}
 yfinance API → Bronze (Raw) → Silver (Clean) → Gold (KPIs) → Dashboard
 {% endcodeblock %}
 
 <ul>
-    <li><strong>Camada Bronze (Ingestão):</strong> Download e armazenamento dos dados brutos exatamente como fornecidos pela fonte, servindo como histórico imutável.</li>
-    <li><strong>Camada Silver (Transformação):</strong> Limpeza, <em>casting</em> de tipos e validação de dados utilizando o poder de processamento distribuído do PySpark.</li>
-    <li><strong>Camada Gold (Negócios):</strong> Engenharia de <em>features</em> e métricas financeiras consolidadas, incluindo cálculo de percentual de retorno diário, média móvel de 7 dias e variação de faixa de preço.</li>
+    <li><strong>Bronze Layer (Ingestion):</strong> Download and storage of raw data exactly as provided by the source, serving as an immutable history.</li>
+    <li><strong>Silver Layer (Transformation):</strong> Cleaning, type <em>casting</em>, and data validation using the distributed processing power of PySpark.</li>
+    <li><strong>Gold Layer (Business):</strong> <em>Feature</em> engineering and consolidated financial metrics, including daily return percentage, 7-day moving average, and price range variation.</li>
 </ul>
 
-<h3>Estrutura de Notebooks</h3>
-<p>A orquestração local (Databricks Free Edition) é dividida nas seguintes rotinas independentes:</p>
+<h3>Notebook Structure</h3>
+<p>The local orchestration (Databricks Free Edition) is split into the following independent routines:</p>
 
 {% codeblock "text" %}
 Notebooks/
-├── 01_bronze_ingest.py    # Extração de dados via yfinance e persistência
-├── 02_silver_clean.py     # Data cleaning e schema validation
-├── 03_gold_transform.py   # Cálculos de KPIs financeiros
-└── 04_analyze.py          # Queries analíticas (Databricks SQL) e Dashboard
+├── 01_bronze_ingest.py    # Data extraction via yfinance and persistence
+├── 02_silver_clean.py     # Data cleaning and schema validation
+├── 03_gold_transform.py   # Financial KPI calculations
+└── 04_analyze.py          # Analytical queries (Databricks SQL) and Dashboard
 {% endcodeblock %}
 
-<h3>Camada de Consumo</h3>
-<p>A ponta final do pipeline entrega os dados modelados (Delta Tables) diretamente para o Databricks SQL, viabilizando a visualização de tendências do mercado financeiro por meio de dashboards integrados.</p>
+<h3>Consumption Layer</h3>
+<p>The final stage of the pipeline delivers the modeled data (Delta Tables) directly to Databricks SQL, enabling financial market trend visualization through integrated dashboards.</p>
 
 <div style="text-align: center; margin-top: 48px;">
     <a href="{{ github }}" target="_blank" class="btn">
         <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
-        Acessar Repositório
+        View Repository
     </a>
 </div>

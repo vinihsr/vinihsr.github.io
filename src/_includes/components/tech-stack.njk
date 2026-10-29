@@ -1,0 +1,8 @@
+<ul class="tech-stack" aria-label="Tecnologias">
+    {% for tech in techs %}
+    <li class="tech-box">
+        <span class="iconify" data-icon="{{ tech.icon }}" aria-hidden="true"></span>
+        <span>{{ tech.name }}</span>
+    </li>
+    {% endfor %}
+</ul>

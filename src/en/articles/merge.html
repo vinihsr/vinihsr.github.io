@@ -1,48 +1,50 @@
 ---
 layout: layouts/artigo.njk
-title: "MERGE: Guia completo"
-description: "Como o MERGE substitui IF EXISTS + UPDATE + INSERT, quando usar em ELT e cuidados com concorrência."
+title: "MERGE: The Complete Guide"
+description: "How MERGE replaces IF EXISTS + UPDATE + INSERT, when to use it in ELT pipelines, and precautions regarding concurrency."
 published: 2026
-topics: ["BANCO DE DADOS", "PERFORMANCE", "SQL"]
+topics: ["DATABASE", "PERFORMANCE", "SQL"]
+permalink: /en/articles/merge.html
 ---
-<p>Já se perguntou como sincronizar duas tabelas no banco de dados? No começo, o normal é escrever diversos comandos <code>IF EXISTS</code>, <code>UPDATE</code> e <code>INSERT</code>. Funciona, mas a query fica gigantesca e a performance não será das melhores.</p>
+<p>Have you ever wondered how to synchronize two tables in a database? At first, the standard approach is to write multiple <code>IF EXISTS</code>, <code>UPDATE</code>, and <code>INSERT</code> statements. It works, but the query becomes massive and performance won't be optimal.</p>
 
-<p>Então talvez seja a hora de conhecer o comando <strong>MERGE</strong>. Neste artigo, vou detalhar como ele funciona, quando deve ser sua primeira opção em processos de ELT (Extract, Load, Transform) e quais cuidados tomar em ambientes com alta concorrência.</p>
-
-<hr class="divider">
-
-<h2>1. O que é o MERGE e o que ele substitui?</h2>
-<p>O comando <code>MERGE</code> (frequentemente chamado de "Upsert") combina operações de <code>INSERT</code>, <code>UPDATE</code> e <code>DELETE</code> em uma única transação atômica. Ele compara uma tabela de destino (Target) com uma tabela de origem (Source) através de uma condição de junção (JOIN).</p>
-
-<p>Ele substitui o anti-pattern tradicional de escrever instruções separadas e sequenciais. Ao invés de o motor do banco de dados varrer as tabelas várias vezes para atualizar o que existe e inserir o que é novo, o <code>MERGE</code> processa a lógica em uma única passagem.</p>
+<p>That might be the right time to get to know the <strong>MERGE</strong> statement. In this article, I will detail how it works, when it should be your go-to option in ELT (Extract, Load, Transform) processes, and what precautions to take in high-concurrency environments.</p>
 
 <hr class="divider">
 
-<h2>2. Prós, Contras e Onde Funciona</h2>
+1. <h2>What is MERGE and what does it replace?
+</h2>
+<p>The <code>MERGE</code> statement (frequently called an "Upsert") combines <code>INSERT</code>, <code>UPDATE</code>, and <code>DELETE</code> operations into a single atomic transaction. It compares a Target table with a Source table through a join condition (JOIN).</p>
 
-<h3>Onde Funciona?</h3>
-<p>A sintaxe <code>MERGE</code> é um padrão SQL (ANSI) suportado nativamente pelo Microsoft SQL Server (T-SQL), Oracle e PostgreSQL (a partir da versão 15).</p>
+<p>It replaces the traditional anti-pattern of writing separate, sequential instructions. Instead of the database engine scanning the tables multiple times to update what exists and insert what is new, <code>MERGE</code> processes the logic in a single pass.</p>
 
-<h3>Vantagens (Prós)</h3>
+<hr class="divider">
+
+<h2>2. Pros, Cons, and Where It Works</h2>
+
+<h3>Where Does It Work?</h3>
+<p>The <code>MERGE</code> syntax is an ANSI SQL standard natively supported by Microsoft SQL Server (T-SQL), Oracle, and PostgreSQL (starting from version 15).</p>
+
+<h3>Advantages (Pros)</h3>
 <ul>
-    <li><strong>Performance em Lote:</strong> Excelente para cargas de dados (ETL/ELT), movendo dados de uma camada Staging para a camada Gold/Produção, por exemplo.</li>
-    <li><strong>Atomicidade:</strong> Se houver erro na inserção de um registro, toda a operação falha, evitando que você fique com dados atualizados pela metade.</li>
-    <li><strong>Código Limpo:</strong> A sintaxe é extremamente legível e declarativa.</li>
+    <li><strong>Batch Performance:</strong> Excellent for data loading processes (ETL/ELT), moving data from a Staging layer to a Gold/Production layer, for example.</li>
+    <li><strong>Atomicity:</strong> If an error occurs while inserting a single record, the entire operation fails, preventing you from ending up with partially updated data.</li>
+    <li><strong>Clean Code:</strong> The syntax is extremely readable and declarative.</li>
 </ul>
 
-<h3>Desvantagens (Contras e Cuidados)</h3>
+<h3>Disadvantages (Cons and Warnings)</h3>
 <ul>
-    <li><strong>Concorrência (Race Conditions):</strong> Em sistemas OLTP com muitas transações simultâneas, o <code>MERGE</code> pode gerar problemas de concorrência. Se duas sessões tentarem rodar um <code>MERGE</code> na mesma tabela ao mesmo tempo, você pode acabar com chaves duplicadas.</li>
-    <li><strong>Deadlocks:</strong> Como ele faz tudo de uma vez, exige locks (bloqueios) maiores do banco de dados.</li>
-    <li><strong>A Solução:</strong> Se precisar usar em um ambiente concorrente, utilize a hint <code>HOLDLOCK</code> ou <code>NOLOCK</code> na tabela de destino para serializar o acesso.</li>
+    <li><strong>Concurrency (Race Conditions):</strong> In OLTP systems with many simultaneous transactions, <code>MERGE</code> can generate concurrency issues. If two sessions try to run a <code>MERGE</code> on the same table simultaneously, you could end up with duplicate keys.</li>
+    <li><strong>Deadlocks:</strong> Because it performs everything at once, it requires heavier database locks.</li>
+    <li><strong>The Workaround:</strong> If you need to use it in a concurrent environment, use the <code>HOLDLOCK</code> or <code>NOLOCK</code> hint on the target table to serialize access.</li>
 </ul>
 
 <hr class="divider">
 
-<h2>3. Cenário Prático: Sincronizando Staging e Produção como exemplo de uso</h2>
-<p>Vamos para o código. Imagine que temos uma rotina diária que recebe o inventário de produtos. Precisamos atualizar a tabela de Produção (Target) com base nos dados que chegaram na tabela temporária (Source).</p>
+<h2>3. Practical Scenario: Synchronizing Staging and Production</h2>
+<p>Let's dive into the code. Imagine we have a daily routine that receives a product inventory. We need to update the Production table (Target) based on data that arrived in the temporary table (Source).</p>
 
-<h3>Passo 1: Criando o Ambiente e Populando Dados</h3>
+<h3>Step 1: Creating the Environment and Populating Data</h3>
 
 {% codeblock "sql" %}
 CREATE SCHEMA stg;
@@ -70,29 +72,29 @@ VALUES
 
 INSERT INTO stg.Source_ProductInventory (ProductID, ProductName, Quantity, LastUpdated)
 VALUES 
-(1, 'Notebook ThinkPad', 45, GETDATE()),  -- Existente: Baixa no estoque (Requer UPDATE)
-(2, 'Mouse Sem Fio', 150, GETDATE()),     -- Existente: Sem mudanças
-(4, 'Monitor Ultrawide', 30, GETDATE()),  -- Novo (Requer INSERT)
-(5, 'Mesa com Ajuste de Altura', 15, GETDATE()); -- Novo (Requer INSERT)
+(1, 'Notebook ThinkPad', 45, GETDATE()),  -- Existing: Stock reduction (Requires UPDATE)
+(2, 'Mouse Sem Fio', 150, GETDATE()),    -- Existing: No changes
+(4, 'Monitor Ultrawide', 30, GETDATE()),  -- New (Requires INSERT)
+(5, 'Mesa com Ajuste de Altura', 15, GETDATE()); -- New (Requires INSERT)
 GO
 {% endcodeblock %}
 
-<h3>Como a tabela de Produção está ANTES do MERGE:</h3>
+<h3>How the Production table looks BEFORE the MERGE:</h3>
 
-{% figure "/images/target_before_merge.png", "Tabela de Destino antes da execução do MERGE", "Tabela dbo.Target_ProductInventory contendo apenas 3 registros originais." %}
+{% figure "/images/target_before_merge.png", "Target Table before MERGE execution", "Table dbo.Target_ProductInventory containing only 3 original records." %}
 
 <hr class="divider">
 
-<h2>4. A Procedure com a Lógica do MERGE</h2>
-<p>Agora, vamos criar a Stored Procedure que fará a sincronização. Repare em como a lógica flui naturalmente, lidando com cada cenário <code>MATCHED</code> e <code>NOT MATCHED</code>.</p>
+<h2>4. The Stored Procedure with MERGE Logic</h2>
+<p>Now, let's create the Stored Procedure that will perform the synchronization. Notice how the logic flows naturally, handling each <code>MATCHED</code> and <code>NOT MATCHED</code> scenario.</p>
 
 {% codeblock "sql" %}
 USE DEVELOPMENT
 GO
 
-IF OBJECT_ID('proc_merge') IS NOT  NULL
+IF OBJECT_ID('proc_merge') IS NOT NULL
 BEGIN 
-	DROP PROCEDURE proc_merge
+    DROP PROCEDURE proc_merge
 END
 
 GO
@@ -125,10 +127,10 @@ GO
 EXEC proc_merge;
 {% endcodeblock %}
 
-<h3>Como a tabela de Produção fica DEPOIS do MERGE:</h3>
+<h3>How the Production table looks AFTER the MERGE:</h3>
 
-{% figure "/images/target_after_merge.png", "Tabela de Destino após a execução do MERGE", "Tabela sincronizada: Estoque atualizado e novos produtos inseridos." %}
+{% figure "/images/target_after_merge.png", "Target Table after MERGE execution", "Synchronized table: Stock updated and new products inserted." %}
 
-<p>O <code>MERGE</code> é uma ferramenta indispensável no cinto de utilidades de qualquer engenheiro ou desenvolvedor de banco de dados. Sabendo exatamente onde (processos em lote) e como aplicá-lo (garantindo índices corretos nas chaves de JOIN), você constrói rotinas de dados muito mais rápidas, limpas e profissionais.</p>
+<p>The <code>MERGE</code> statement is an indispensable tool in any database engineer's or developer's utility belt. By knowing exactly where (batch processes) and how to apply it (ensuring correct indexes on JOIN keys), you can build much faster, cleaner, and more professional data routines.</p>
 
-<p>Obrigado pela leitura e até o próximo artigo!</p>
+<p>Thanks for reading, and see you in the next article!</p>

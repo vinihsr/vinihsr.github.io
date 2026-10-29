@@ -1,86 +1,87 @@
 ---
 layout: layouts/artigo.njk
-title: "Temp Table x Table Variable"
-description: "Diferenças entre tabelas temporárias (#table) e variáveis de tabela (@table) no SQL Server: estatísticas, estimativa de 30%, Excessive Grant e Spill."
+title: "Temp Table vs Table Variable"
+description: "Differences between temporary tables (#table) and table variables (@table) in SQL Server: statistics, the 30% estimation fallback, Excessive Grant, and Spills."
 published: 2026
-topics: ["BANCO DE DADOS", "PERFORMANCE", "SQL"]
+topics: ["DATABASE", "PERFORMANCE", "SQL"]
+permalink: /en/articles/tempTable_varTable.html
 ---
-<p>Este artigo servirá de guia prático e teórico em relação à escolha da estrutura de dados temporários no SQL Server. Apesar de muitos desenvolvedores usarem indistintamente Tabelas Temporárias (#table) e Variáveis de Tabela (@table), elas seguem bases e comportamentos completamente diferentes por baixo dos panos.</p>
+<p>This article serves as a practical and theoretical guide regarding the choice of temporary data structures in SQL Server. Although many developers use Temporary Tables (#table) and Table Variables (@table) interchangeably, they follow completely different foundations and behaviors under the hood.</p>
 
-<h2>Sabendo disso, vamos começar pelas Tabelas Temporárias (#table):</h2>
-<p>Uma tabela temporária é uma estrutura de dados real, criada fisicamente no banco de dados tempdb. Assim como as tabelas comuns, o SQL Server consegue gerenciar e entender o que está acontecendo com os dados ali dentro. Ela existe no disco (ou cache de buffer) e permite manipular volumes massivos de informações.</p>
+<h2>With that in mind, let's start with Temporary Tables (#table):</h2>
+<p>A temporary table is a real data structure, physically created in the tempdb database. Just like regular tables, SQL Server can manage and understand what is happening to the data inside it. It exists on disk (or in the buffer cache) and allows you to manipulate massive volumes of information.</p>
 
-<p>Seguindo a premissa do mecanismo do banco de dados, temos algumas especificações que dão uma vantagem absurda para as #tables, como as estatísticas e histogramas.</p>
+<p>Following the database engine's premise, we have certain specifications that give #tables an absurd advantage, such as statistics and histograms.</p>
 
-<p>Estatísticas, teórica e resumidamente, informam ao otimizador do SQL Server a quantidade e a distribuição dos dados (os chamados histogramas). O otimizador tem acesso a esses dados, lê tudo e, com isso, consegue montar o melhor plano de execução possível. Além disso, você pode criar índices permanentes nelas e o recurso de paralelização de CPU funciona perfeitamente.</p>
-
-<blockquote>
-    Fato curioso: O comando OPTION (RECOMPILE) funciona perfeitamente aqui, permitindo que o banco reotimize a query baseando-se nos dados reais já conhecidos antes de executá-la.
-</blockquote>
-
-<p>Mas, nem tudo é perfeito. O uso de temp tables gera um pequeno overhead de I/O por precisar criar a tabela, gerar locks e, depois, dropar a tabela. Além, é claro, de ocupar espaço real no tempdb.</p>
-
-<hr class="divider">
-
-<h2>Após o overview relacionado às temp tables, podemos partir para as Variáveis de Tabela (@table):</h2>
-<p>Como o próprio nome diz, trata-se de uma variável, assim como uma string ou um int. Ela é inicializada, preenchida e descartada automaticamente no final do escopo ou do batch.</p>
-
-<h3>Isso pode soar como o cenário ideal:</h3>
-<p>Sintaxe mais limpa (sem precisar fazer DROP) e menos I/O de metadata gerando log no tempdb. Porém, o paradigma aqui é extremamente perigoso para o banco de dados.</p>
-
-<p>O SQL Server trabalha cegamente com variáveis de tabela. Independentemente de você inserir 10, 1.000 ou 1 milhão de linhas, o otimizador sempre vai estimar que existem exatamente 100 linhas ali dentro (ou apenas 1 em versões mais antigas do SQL Server). Simplesmente não existem histogramas.</p>
+<p>Statistics, theoretically and briefly, inform the SQL Server optimizer about the quantity and distribution of data (known as histograms). The optimizer has access to this data, reads it all, and consequently builds the best possible execution plan. Additionally, you can create permanent indexes on them, and CPU parallelization works seamlessly.</p>
 
 <blockquote>
-    Fato curioso: Tentar usar OPTION (RECOMPILE) em uma variável de tabela não vai salvar sua query. Como não existem histogramas para ler, a recompilação vai continuar estimando as mesmas 100 linhas de forma fixa.
+    Fun fact: The <code>OPTION (RECOMPILE)</code> hint works perfectly here, allowing the database to re-optimize the query based on the actual, known data prior to execution.
+</blockquote>
+
+<p>However, not everything is perfect. Using temp tables generates a slight I/O overhead due to table creation, lock generation, and subsequent dropping. Not to mention, of course, that it occupies real space in tempdb.</p>
+
+<hr class="divider">
+
+<h2>After an overview of temp tables, we can move on to Table Variables (@table):</h2>
+<p>As the name implies, it's just a variable, much like a string or an int. It is initialized, populated, and automatically discarded at the end of the scope or batch.</p>
+
+<h3>This might sound like the ideal scenario:</h3>
+<p>Cleaner syntax (no need to issue a DROP statement) and less metadata I/O generating log traffic in tempdb. However, the paradigm here is extremely dangerous for the database.</p>
+
+<p>SQL Server works blindly with table variables. Regardless of whether you insert 10, 1,000, or 1 million rows, the optimizer will always estimate that there are exactly 100 rows inside (or just 1 in older versions of SQL Server). Simply put, histograms do not exist.</p>
+
+<blockquote>
+    Fun fact: Trying to use <code>OPTION (RECOMPILE)</code> on a table variable won't save your query. Since there are no histograms to read, re-compilation will continue estimating those same 100 rows fixedly.
 </blockquote>
 
 <hr class="divider">
 
-<h2>O "chute" de 30% do SQL Server:</h2>
-<p>Existe um comportamento curioso no motor do SQL Server quando lidamos com Variáveis de Tabela. Como a <code>@table</code> <strong>não possui estatísticas nem histogramas</strong>, o otimizador fica "cego" em relação à distribuição real dos dados que estão lá dentro.</p>
+<h2>SQL Server's 30% "Guess":</h2>
+<p>There is a curious behavior in the SQL Server engine when dealing with Table Variables. Because a <code>@table</code> <strong>lacks statistics and histograms</strong>, the optimizer remains "blind" to the actual data distribution inside it.</p>
 
-<p>Quando você executa uma consulta usando operadores de desigualdade ou intervalo (como <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>), o mecanismo de <em>Cardinality Estimation (CE)</em> precisa adivinhar quantas linhas vão retornar. Sem ter um histograma para ler, ele aplica uma regra de <em>fallback</em> (um chute padronizado): ele <strong>sempre estima que a condição vai retornar exatamente 30% do total de linhas da tabela</strong>.</p>
+<p>When you run a query using inequality or range operators (such as <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>), the Cardinality Estimation (CE) mechanism needs to guess how many rows will be returned. Without a histogram to read, it applies a fallback rule (a standardized guess): it <strong>always estimates that the condition will return exactly 30% of the table's total rows</strong>.</p>
 
-<p>Observe a evidência abaixo. Inserimos 2.424.830 registros na nossa variável de tabela. Ao executarmos um <code>SELECT</code> com o filtro <code>WHERE id &lt;= 727450</code>, o SQL Server não varreu os dados para saber a resposta. Ele simplesmente pegou a cardinalidade total da tabela e multiplicou por 0.3 (30%). O resultado? Uma estimativa cravada de <strong>727.450 linhas</strong>.</p>
+<p>Look at the evidence below. We inserted 2,424,830 records into our table variable. When executing a <code>SELECT</code> with the filter <code>WHERE id &lt;= 727450</code>, SQL Server didn't scan the data to find out the answer. It simply took the table's total cardinality and multiplied it by 0.3 (30%). The result? A hardcoded estimate of <strong>727,450 rows</strong>.</p>
 
-{% figure "/images/30_percent_evidence_image.png", "Evidência do fallback de 30% no Cardinality Estimator", 'Repare no "Estimated Number of Rows Per Execution" mostrando exatos 30% do total inserido.' %}
+{% figure "/images/30_percent_evidence_image.png", "Evidence of the 30% fallback in the Cardinality Estimator", 'Notice the "Estimated Number of Rows Per Execution" showing an exact 30% of the total inserted rows.' %}
 
-<h2>Excessive Grant e o temido Spill:</h2>
-<p>Quando o banco estima errado (pensando que tem 100 linhas, mas tem 100 mil), ele consequentemente erra na alocação de memória RAM para executar a operação.</p>
+<h2>Excessive Grant and the Feared Spill:</h2>
+<p>When the database estimates incorrectly (thinking there are 100 rows when there are actually 100k), it consequently gets the RAM memory allocation wrong for executing the operation.</p>
 
-<p>O <em>Excessive Grant</em> ocorre quando o SQL aloca memória demais (desperdiçando recursos vitais do servidor e impedindo outras conexões de trabalharem) ou aloca memória de menos, baseando-se naquela estimativa falsa de 100 linhas.</p>
+<p>An <em>Excessive Grant</em> occurs when SQL allocates too much memory (wasting vital server resources and preventing other connections from working) or allocates too little memory, based on that fake 100-row estimate.</p>
 
-<p>Observe o operador SELECT:</p>
+<p>Observe the SELECT operator:</p>
 
-{% figure "/images/excessive_evidence_image.png", "Plano de execução com o operador SELECT sinalizando Excessive Grant" %}
+{% figure "/images/excessive_evidence_image.png", "Execution plan with the SELECT operator signaling an Excessive Grant" %}
 
-<p>Veja no detalhe a seguir o aviso amarelo (warning) disparado diretamente no operador SELECT. Ele mostra claramente o diagnóstico de "ExcessiveGrant", expondo a discrepância entre a memória que o SQL reservou (Grant size) e o que ele efetivamente utilizou:</p>
+<p>Take a closer look at the yellow warning triggered directly on the SELECT operator. It clearly displays the "ExcessiveGrant" diagnosis, exposing the discrepancy between the memory SQL reserved (Grant size) and what it actually utilized:</p>
 
-{% figure "/images/excessive_select_property_image.png", "Propriedades do operador SELECT com o aviso de ExcessiveGrant" %}
+{% figure "/images/excessive_select_property_image.png", "SELECT operator properties showing the ExcessiveGrant warning" %}
 
-<p>E o que acontece se o SQL Server alocar pouca memória RAM para uma operação pesada de ordenação (Sort)? Os dados não vão caber. Como rota de fuga, o banco "derrama" (Spill) essa operação diretamente para o disco rígido, através do tempdb. É aí que a velocidade despenca, pois o disco pode ser de milhares a centenas de milhares de vezes mais lento que a memória RAM.</p>
+<p>And what happens if SQL Server allocates too little RAM memory for a heavy sorting operation (Sort)? The data won't fit. As an escape route, the database "spills" (Spill) that operation directly to the hard drive via tempdb. That's when performance plummets, as disk can be thousands to hundreds of thousands of times slower than RAM memory.</p>
 
-<p>Observe o operador Sort:</p>
+<p>Observe the Sort operator:</p>
 
-{% figure "/images/spill_evidence_image.png", "Aviso de Spill para o tempdb no operador Sort" %}
+{% figure "/images/spill_evidence_image.png", "Spill to tempdb warning on the Sort operator" %}
 
-<p>Abaixo, o aviso explícito no operador de <em>Sort</em> confirmando que o SQL foi forçado a fazer um Spill para o tempdb, degradando fortemente a performance da query:</p>
+<p>Below is the explicit warning on the <em>Sort</em> operator confirming that SQL was forced to Spill to tempdb, severely degrading query performance:</p>
 
-{% figure "/images/spill_sort_property_image.png", "Propriedades do operador Sort com o aviso de Spill para o tempdb" %}
+{% figure "/images/spill_sort_property_image.png", "Sort operator properties displaying the Spill to tempdb warning" %}
 
 <hr class="divider">
 
-<h2>Para finalizar: A prova prática de por que a Temp Table vence</h2>
-<p>Até agora vimos o pesadelo que uma <code>@table</code> pode causar no plano de execução. Mas e se pegarmos exatamente o mesmo cenário (inserindo milhares de linhas e fazendo uma ordenação) e usarmos uma <code>#table</code>?</p>
+<h2>To Wrap Up: The Practical Proof of Why Temp Tables Win</h2>
+<p>So far, we've seen the nightmare a <code>@table</code> can cause in an execution plan. But what if we take the exact same scenario (inserting thousands of rows and performing a sort) and use a <code>#table</code> instead?</p>
 
 {% codeblock "sql" %}
 CREATE TABLE #MinhaTempTable (id INT PRIMARY KEY, name VARCHAR(50), age INT);
 
--- Inserindo o mesmo grande volume de dados do cenário problemático
+-- Inserting the exact same large data volume from the problematic scenario
 INSERT INTO #MinhaTempTable 
 SELECT id, name, age FROM DEVELOPMENT..proc_1_table_test;
 
--- O SQL Server criará estatísticas reais para essa tabela
+-- SQL Server will generate real statistics for this table
 SELECT id, name, age 
 FROM #MinhaTempTable 
 WHERE id <= 1000 
@@ -89,12 +90,12 @@ ORDER BY age;
 DROP TABLE #MinhaTempTable;
 {% endcodeblock %}
 
-<p>Ao analisar as propriedades do plano de execução dessa nova query, a mágica acontece. Como o SQL Server gera <strong>estatísticas reais e histogramas</strong> para a Temp Table logo após a inserção dos dados, o otimizador não precisa mais "adivinhar".</p>
+<p>When analyzing the properties of this new query's execution plan, the magic happens. Because SQL Server generates <strong>real statistics and histograms</strong> for the Temp Table right after data insertion, the optimizer no longer needs to "guess."</p>
 
-<p>Na imagem abaixo, você pode notar que o <em>Estimated Number of Rows</em> bate perfeitamente com a realidade. Como o banco sabe a quantidade exata de dados que vai processar, ele aloca a memória (Memory Grant) na medida certa e executa o <em>Sort</em> inteiramente na memória RAM, <strong>sem qualquer aviso amarelo de Spill ou Excessive Grant</strong>:</p>
+<p>In the image below, you can notice that the <em>Estimated Number of Rows</em> matches reality perfectly. Because the database knows the exact amount of data it will process, it allocates memory (Memory Grant) just right and executes the <em>Sort</em> entirely in RAM memory, <strong>without any yellow Spill or Excessive Grant warnings</strong>:</p>
 
-{% figure "/images/tem_table_image.png", "Plano de execução mostrando estimativas corretas com Temp Table" %}
+{% figure "/images/tem_table_image.png", "Execution plan showing accurate estimations with a Temp Table" %}
 
-<p>Essas são as principais diferenças práticas e teóricas entre Temp Tables e Table Variables. A regra de ouro é: se você tem menos de 100 linhas (ou apenas um passador simples de parâmetros), uma <code>@table</code> pode deixar o código limpo. Para qualquer volume além disso, ou se tiver dúvida de quanto sua transação vai crescer em produção, vá de <code>#table</code>. O custo de I/O para criá-la é ínfimo se comparado ao pesadelo arquitetural de um plano de execução corrompido por uma variável gigante.</p>
+<p>These are the main practical and theoretical differences between Temp Tables and Table Variables. The golden rule is: if you have fewer than 100 rows (or just a simple parameter passer), a <code>@table</code> can keep your code clean. For any volume beyond that, or if you have doubts about how much your transaction might scale in production, go with a <code>#table</code>. The I/O cost to create it is negligible compared to the architectural nightmare of an execution plan corrupted by a giant variable.</p>
 
-<p>Obrigado por ler até aqui e bons estudos!</p>
+<p>Thanks for reading this far, and happy studying!</p>

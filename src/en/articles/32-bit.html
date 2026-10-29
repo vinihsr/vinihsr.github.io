@@ -1,73 +1,75 @@
 ---
 layout: layouts/artigo.njk
-title: "De 32-Bits ao Overflow: O Impacto dos Números de Mersenne na Arquitetura de Dados"
-description: "Análise de baixo nível conectando a matemática dos números de Mersenne, arquitetura de CPUs de 32/64 bits, dicionários, encodings (UTF-8/UTF-16) e o impacto físico no armazenamento de bancos de dados."
+title: "From 32-Bits to Overflow: The Impact of Mersenne Numbers on Data Architecture"
+description: "Low-level analysis connecting Mersenne numbers mathematics, 32/64-bit CPU architecture, dictionaries, encodings (UTF-8/UTF-16), and physical impact on database storage."
 published: 2026
-topics: ["BANCO DE DADOS", "INTERNALS", "ARMAZENAMENTO"]
+topics: ["DATABASE", "INTERNALS", "STORAGE"]
+permalink: /en/articles/32-bit.html
 ---
 
-<p>Existe uma linha invisível que conecta a teoria matemática pura, os limites físicos do hardware moderno e o planejamento de tipos de dados em um banco de dados. Para entender como a capacidade de processamento, a codificação de caracteres e o armazenamento físico funcionam "debaixo do capô", precisamos descer à camada zero e falar sobre os números de Mersenne e o sistema binário.</p>
+<p>There is an invisible line connecting pure mathematical theory, the physical limits of modern hardware, and data type planning in a database. To understand how processing capacity, character encoding, and physical storage work "under the hood," we need to descend to layer zero and talk about Mersenne numbers and the binary system.</p>
     
-<p>Este artigo mapeia o caminho completo de um dado: da sua concepção abstrata em dicionários lógicos até a gravação física nos blocos de armazenamento, passando pelas barreiras de processamento da CPU.</p>
+<p>This article maps the complete path of a piece of data: from its abstract conception in logical dictionaries down to physical writing on storage blocks, passing through CPU processing barriers.</p>
 
 <hr class="divider">
 
-<h2>1. O Número de Mersenne: A Matemática do Binário</h2>
-<p>Na matemática teórica, um número de Mersenne é definido pela fórmula $2^n - 1$. O que torna essa fórmula vital para a engenharia de sistemas é o comportamento dela quando traduzida para a base 2 (binário). Na computação, qualquer potência de 2 pura é representada por um bit <code>1</code> seguido de zeros. Por exemplo, $2^4 = 16$, que em binário é <code>10000</code>.</p>
+1. <h2>The Mersenne Number: The Mathematics of Binary
+</h2>
+<p>In theoretical mathematics, a Mersenne number is defined by the formula $2^n - 1$. What makes this formula vital for systems engineering is its behavior when translated to base 2 (binary). In computing, any pure power of 2 is represented by a <code>1</code> bit followed by zeros. For example, $2^4 = 16$, which in binary is <code>10000</code>.</p>
 
-<p>Quando subtraímos exatamente 1 desse valor, ocorre uma cascata no sistema binário: todos os zeros à direita se "viram", e o número se torna uma sequência sólida de uns. Assim, $2^4 - 1 = 15$, que em binário é exatamente <code>1111</code>. Em 1772, Leonhard Euler provou que $2^{31} - 1$ era um número primo. Sem saber, ele estava calculando o limite exato de um número inteiro positivo na arquitetura computacional que dominaria o mundo séculos depois.</p>
+<p>When we subtract exactly 1 from this value, a cascade occurs in the binary system: all zeros to the right "flip," and the number becomes a solid sequence of ones. Thus, $2^4 - 1 = 15$, which in binary is exactly <code>1111</code>. In 1772, Leonhard Euler proved that $2^{31} - 1$ was a prime number. Unknowingly, he was calculating the exact limit of a positive integer in the computational architecture that would dominate the world centuries later.</p>
 
-<h2>2. Arquitetura de CPU: O Limite Físico e os 32-bits</h2>
-<p>As nomenclaturas de 32-bit e 64-bit se referem à "largura da palavra" (word size) da arquitetura do processador. É o tamanho físico dos registradores internos da CPU, ou seja, o volume máximo de zeros e uns que a Unidade Lógica e Aritmética consegue computar em um único ciclo de clock.</p>
+<h2>2. CPU Architecture: Physical Limits and 32-Bits</h2>
+<p>The 32-bit and 64-bit designations refer to the "word size" of the processor architecture. It is the physical size of the CPU's internal registers, meaning the maximum volume of zeros and ones that the Arithmetic Logic Unit (ALU) can compute in a single clock cycle.</p>
 
-<p>Um registrador de 32 bits lotado de energia — todos os transistores ativados, marcando <code>1</code> — é a materialização física de um número de Mersenne: $2^{32} - 1$, ou 4.294.967.295. Esse é o maior número inteiro sem sinal que uma CPU de 32 bits consegue calcular nativamente. Se você precisar processar um número maior que esse, o hardware entra em gargalo: a CPU precisa fragmentar o cálculo em múltiplos ciclos de instrução, degradando a performance e aumentando a latência. A transição para 64-bit não apenas permitiu endereçar mais memória RAM, mas garantiu que o motor processasse blocos de dados nativos astronomicamente maiores de uma só vez.</p>
+<p>A 32-bit register packed with energy — all transistors activated, marking <code>1</code> — is the physical materialization of a Mersenne number: $2^{32} - 1$, or 4,294,967,295. This is the largest unsigned integer a 32-bit CPU can calculate natively. If you need to process a number larger than that, hardware hits a bottleneck: the CPU must fragment the calculation across multiple instruction cycles, degrading performance and increasing latency. The transition to 64-bit not only allowed addressing more RAM, but ensured the engine could process astronomically larger native blocks of data at once.</p>
 
 <hr class="divider">
 
-<h2>3. Dicionários: A Camada Lógica (ASCII e Unicode)</h2>
-<p>A CPU sabe fazer cálculos rápidos, mas não entende o conceito de texto. Para que a máquina "leia" letras, precisamos de dicionários de mapeamento. Aqui entram o ASCII e o Unicode.</p>
+<h2>3. Dictionaries: The Logical Layer (ASCII and Unicode)</h2>
+<p>The CPU knows how to do fast math, but it doesn't understand the concept of text. For the machine to "read" letters, we need mapping dictionaries. This is where ASCII and Unicode come in.</p>
 
-<p>O <strong>ASCII</strong> foi o dicionário original, utilizando apenas 7 bits (indo de 0 a 127). Ele mapeia caracteres do alfabeto inglês, números e símbolos básicos para identificadores inteiros (Code Points). O <strong>Unicode</strong> é a evolução desse conceito: um catálogo universal projetado para mapear absolutamente qualquer caractere humano, desde o alfabeto cirílico até emojis, garantindo um identificador único para cada um. É crucial entender que essas tecnologias são apenas tabelas conceituais de "De/Para" numéricos. Elas não dizem como o computador deve gravar isso no disco.</p>
+<p><strong>ASCII</strong> was the original dictionary, using just 7 bits (ranging from 0 to 127). It maps English alphabet characters, numbers, and basic symbols to integer identifiers (Code Points). <strong>Unicode</strong> is the evolution of that concept: a universal catalog designed to map absolutely any human character, from the Cyrillic alphabet to emojis, ensuring a unique identifier for each. It is crucial to understand that these technologies are merely conceptual numeric "From/To" tables. They do not dictate how the computer should write this to disk.</p>
 
-<h2>4. Encoders: A Camada Física (UTF-8 e UTF-16)</h2>
-<p>O <em>encoder</em> (codificador) é a engrenagem que serializa o Code Point do dicionário em bits reais para serem gravados na memória ou no disco do banco de dados.</p>
+<h2>4. Encoders: The Physical Layer (UTF-8 and UTF-16)</h2>
+<p>The encoder is the mechanism that serializes the dictionary's Code Point into actual bits to be written to memory or a database disk.</p>
 
 <ul>
-    <li><strong>UTF-8:</strong> É um algoritmo de comprimento variável. Ele divide a gravação em blocos de 8 bits (1 byte). Se o caractere for simples (como os originais do ASCII), ele gasta apenas 1 byte. Se for complexo, ele usa até 4 bytes. É o padrão dominante na internet pela eficiência de espaço em textos ocidentais.</li>
-    <li><strong>UTF-16:</strong> Define que, por padrão, cada caractere ocupará um bloco mínimo de 16 bits (2 bytes). Em textos onde a maioria dos caracteres gastaria 3 ou 4 bytes no UTF-8 (como mandarim ou japonês), o UTF-16 se torna vantajoso. Para textos em inglês/português, ele simplesmente dobra o espaço consumido sem entregar benefícios.</li>
+    <li><strong>UTF-8:</strong> A variable-length algorithm. It divides writing into 8-bit blocks (1 byte). If the character is simple (like original ASCII), it spends only 1 byte. If complex, it uses up to 4 bytes. It is the dominant standard on the internet due to space efficiency in Western texts.</li>
+    <li><strong>UTF-16:</strong> Defines that, by default, each character will occupy a minimum block of 16 bits (2 bytes). In texts where most characters would take 3 or 4 bytes in UTF-8 (such as Mandarin or Japanese), UTF-16 becomes advantageous. For English/Portuguese texts, it simply doubles the consumed space without delivering benefits.</li>
 </ul>
 
 <hr class="divider">
 
-<h2>5. A Camada de Banco de Dados: O Impacto Físico</h2>
-<p>Para quem modela tabelas ou administra bancos relacionais, ignorar a matemática binária e o funcionamento dos encoders gera dívida técnica e degradação de performance direta. Em sistemas de gerenciamento de banco de dados, os dados são armazenados em páginas (geralmente de 8KB). O objetivo do motor é colocar o máximo de registros (linhas) possível dentro de uma única página para reduzir o custo de I/O de disco.</p>
+<h2>5. The Database Layer: Physical Impact</h2>
+<p>For those who model tables or administer relational databases, ignoring binary math and encoder behavior generates technical debt and direct performance degradation. In database management systems, data is stored in pages (typically 8KB). The engine's goal is to fit as many records (rows) as possible into a single page to reduce disk I/O cost.</p>
 
-<p>Se você escolhe UTF-16 (como o comportamento nativo de dados <code>NVARCHAR</code> em alguns motores) para armazenar textos estritamente em português, você corta a capacidade da página pela metade. Menos linhas por página significa que o banco fará mais leituras lógicas em disco durante um <em>Index Scan</em>, varrendo o <em>Buffer Cache</em> da memória RAM mais rápido, causando gargalo no I/O.</p>
+<p>If you choose UTF-16 (such as the native behavior of <code>NVARCHAR</code> data in some engines) to store strictly Portuguese text, you cut page capacity in half. Fewer rows per page means the database will perform more logical disk reads during an <em>Index Scan</em>, thrashing the RAM memory <em>Buffer Cache</em> faster, causing I/O bottlenecks.</p>
 
-<p>O limite de hardware dos registradores também reflete na tipagem de dados. Quando modelamos uma chave primária, a escolha entre <code>INT</code> e <code>BIGINT</code> não é uma preferência arbitrária:</p>
+<p>Hardware register limits also reflect on data typing. When modeling a primary key, choosing between <code>INT</code> and <code>BIGINT</i> is not an arbitrary preference:</p>
 
 {% codeblock "sql" %}
--- O tipo INT clássico (32-bit integer) consome 4 bytes.
--- Ele usa 1 bit para determinar o sinal (positivo/negativo).
--- O limite positivo absoluto é o número de Mersenne de 31 bits: 2.147.483.647
+-- The classic INT type (32-bit integer) consumes 4 bytes.
+-- It uses 1 bit to determine sign (positive/negative).
+-- The absolute positive limit is the 31-bit Mersenne number: 2,147,483,647
 CREATE TABLE fatos_vendas (
     venda_id INT PRIMARY KEY,
     -- ...
 );
 
--- Ao atingir 2,14 bilhões de linhas, ocorre o temido Integer Overflow.
--- A solução (BIGINT) requer 64-bit (8 bytes), dobrando o custo do índice,
--- mas permitindo chaves seguras a longo prazo para grandes volumes.
+-- Upon reaching 2.14 billion rows, the dreaded Integer Overflow occurs.
+-- The solution (BIGINT) requires 64-bit (8 bytes), doubling index cost,
+-- but allowing long-term secure keys for large volumes.
 ALTER TABLE fatos_vendas ALTER COLUMN venda_id TYPE BIGINT;
 {% endcodeblock %}
 
-<h2>6. Conectando Tudo</h2>
-<p>Com esse fluxo mapeado, a relação entre esses elementos fica clara:</p>
+<h2>6. Connecting It All</h2>
+<p>With this flow mapped out, the relationship between these elements becomes clear:</p>
     
-<p>Quando um sistema registra uma letra em um banco de dados, essa letra busca seu ID matemático no dicionário conceitual (<strong>Unicode</strong>). Esse número abstrato é então compactado em blocos de armazenamento otimizados pelo encoder (<strong>UTF-8</strong>) para economizar espaço nas páginas do disco do <strong>Banco de Dados</strong>. Para analisar milhões dessas linhas de texto rapidamente, o processador lê o disco recebendo essas instruções em longas correntes através de seus barramentos de <strong>64-bits</strong>, limitados estruturalmente pela exata anomalia binária descoberta no estudo dos <strong>Números de Mersenne</strong>.</p>
+<p>When a system registers a letter in a database, that letter looks up its mathematical ID in the conceptual dictionary (<strong>Unicode</strong>). This abstract number is then packed into storage blocks optimized by the encoder (<strong>UTF-8</strong>) to save space on the <strong>Database</strong> disk pages. To analyze millions of these text lines quickly, the processor reads disk instructions streaming through its <strong>64-bit</strong> buses, structurally limited by the exact binary anomaly discovered in the study of <strong>Mersenne Numbers</strong>.</p>
 
 <blockquote>
-    Fato curioso: A arquitetura assinada de 32-bits que herdou a matemática de Euler é a responsável pelo famigerado "Bug do Ano 2038" (Y2K38). Sistemas UNIX countam o tempo registrando os segundos decorridos desde 1º de janeiro de 1970 usando um inteiro de 32 bits. Em 19 de janeiro de 2038, o relógio atingirá exatos $2^{31} - 1$ segundos. Ao somar 1 segundo a mais, o sistema sofrerá um overflow, virando todos os bits para zero e mudando o bit de sinal, interpretando a data como 1901. O mesmo conceito matemático que quebrava jogos como o nível 256 do Pac-Man ($2^8 - 1 = 255$) segue ditando as regras de servidores globais.
+    Fun fact: The 32-bit signed architecture that inherited Euler's math is responsible for the infamous "Year 2038 Bug" (Y2K38). UNIX systems count time by recording elapsed seconds since January 1, 1970 using a 32-bit integer. On January 19, 2038, the clock will hit exactly $2^{31} - 1$ seconds. Adding 1 more second causes an overflow, flipping all bits to zero and changing the sign bit, interpreting the date as 1901. The same mathematical concept that broke games like Pac-Man's level 256 ($2^8 - 1 = 255$) continues dictating the rules of global servers.
 </blockquote>
 
-<p>A otimização de dados nunca para no nível lógico. Compreender o limite físico da máquina separa quem apenas escreve queries de quem projeta arquiteturas resilientes.</p>
+<p>Data optimization never stops at the logical level. Understanding the physical limits of the machine separates those who merely write queries from those who design resilient architectures.</p>

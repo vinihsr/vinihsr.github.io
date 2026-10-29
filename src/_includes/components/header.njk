@@ -1,3 +1,19 @@
+{% macro themeIcon(name) %}
+{%- if name == "sun" -%}
+<svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+{%- elif name == "moon" -%}
+<svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+{%- else -%}
+<svg class="icon icon-system" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+{%- endif -%}
+{% endmacro %}
+
+{%- set themeText = {
+    "label":  "Change theme" if lang == 'en' else "Alterar tema",
+    "light":  "Light"  if lang == 'en' else "Claro",
+    "dark":   "Dark"   if lang == 'en' else "Escuro",
+    "system": "System" if lang == 'en' else "Sistema"
+} -%}
 <header>
     <div class="container navbar">
         <a href="{{ '/en/index.html' if lang == 'en' else '/index.html' }}" class="logo">{{ site.logo or "root@vini:~#" }}</a>
@@ -14,7 +30,18 @@
                 {% endif %}
             </ul>
             <button id="lang-toggle" class="theme-btn" aria-label="Alternar Idioma">PT / EN</button>
-            <button id="theme-toggle" class="theme-btn">🌙 Escuro</button>
+            <div class="theme-switch" id="theme-switch">
+                <button type="button" class="theme-btn theme-trigger" id="theme-trigger"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu"
+                        aria-label="{{ themeText.label }}">
+                    {{ themeIcon("sun") }}{{ themeIcon("moon") }}{{ themeIcon("system") }}
+                </button>
+                <ul class="theme-menu" id="theme-menu" role="menu" hidden>
+                    <li role="none"><button type="button" class="theme-option" role="menuitemradio" aria-checked="false" data-theme-value="light">{{ themeIcon("sun") }}<span>{{ themeText.light }}</span></button></li>
+                    <li role="none"><button type="button" class="theme-option" role="menuitemradio" aria-checked="false" data-theme-value="dark">{{ themeIcon("moon") }}<span>{{ themeText.dark }}</span></button></li>
+                    <li role="none"><button type="button" class="theme-option" role="menuitemradio" aria-checked="false" data-theme-value="system">{{ themeIcon("system") }}<span>{{ themeText.system }}</span></button></li>
+                </ul>
+            </div>
             <button class="menu-toggle" id="menu-toggle" aria-label="Abrir Menu">
                 <span class="iconify" data-icon="mdi:menu"></span>
             </button>

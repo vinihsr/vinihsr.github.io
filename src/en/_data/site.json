@@ -4,5 +4,6 @@
     { "id": "home", "label": "Home", "href": "/en/index.html" },
     { "id": "articles", "label": "Articles", "href": "/en/articles.html" },
     { "id": "projects", "label": "Projects", "href": "/en/projects.html" }
-  ]
+  ],
+  "theme": { "label": "Alterar tema", "light": "Claro", "dark": "Escuro", "system": "Sistema" }
 }

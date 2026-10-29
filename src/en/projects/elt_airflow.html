@@ -1,37 +1,38 @@
 ---
 layout: layouts/projeto.njk
+lang: en
 title: "ELT Airflow Pipeline"
-description: "Orquestração de extração via API REST, carga em banco relacional e modelagem de dados utilizando dbt."
+description: "Orchestration of REST API extraction, loading into a relational database, and data modeling with dbt."
 topics: ["AIRFLOW", "PYTHON", "DBT", "POSTGRESQL", "DOCKER"]
 github: "https://github.com/vinihsr/elt_airflow"
 ---
 
-<p>Este projeto consolida um fluxo completo de Engenharia de Dados focado no paradigma <strong>ELT (Extract, Load, Transform)</strong>. O diferencial desta arquitetura é a integração de ponta a ponta com um Data Source proprietário (desenvolvido no projeto <em>Hyper-Rent</em>), demonstrando domínio tanto na engenharia de software que serve o dado, quanto na infraestrutura analítica que o consome.</p>
+<p>This project brings together a complete Data Engineering workflow built around the <strong>ELT (Extract, Load, Transform)</strong> paradigm. What sets this architecture apart is its end-to-end integration with a proprietary Data Source (built in the <em>Hyper-Rent</em> project), demonstrating command of both the software engineering that serves the data and the analytical infrastructure that consumes it.</p>
 
-<h3>Arquitetura de Redes Isoladas (Docker)</h3>
-<p>Para simular um ambiente de produção real e seguro, a infraestrutura foi dividida em duas redes Docker distintas que se comunicam via proxy:</p>
+<h3>Isolated Networks Architecture (Docker)</h3>
+<p>To simulate a real and secure production environment, the infrastructure was split into two distinct Docker networks that communicate through a proxy:</p>
 
 <ul>
-    <li><strong>Rede do Data Source:</strong> Hospeda a API REST (Node.js/Express) protegida por um Nginx operando como <em>Forward Proxy</em>.</li>
-    <li><strong>Rede do Data Pipeline (Airflow):</strong> Contém os <em>workers</em> de extração, o banco de dados analítico e o motor de transformação.</li>
+    <li><strong>Data Source Network:</strong> Hosts the REST API (Node.js/Express) protected by an Nginx acting as a <em>Forward Proxy</em>.</li>
+    <li><strong>Data Pipeline Network (Airflow):</strong> Contains the extraction <em>workers</em>, the analytical database, and the transformation engine.</li>
 </ul>
 
 <hr class="divider">
 
-<h2>O Fluxo ELT</h2>
+<h2>The ELT Flow</h2>
 
 <h3>1. Extract (Python)</h3>
-<p>O Apache Airflow orquestra um script em Python responsável por bater no endpoint seguro da API (<code>http://localhost/api/admin/cars?apikey=</code>). O uso de chaves de API garante a extração de dados pré-analisados de forma governada, respeitando os contratos de dados da aplicação de origem.</p>
+<p>Apache Airflow orchestrates a Python script that calls the secured API endpoint (<code>http://localhost/api/admin/cars?apikey=</code>). Using API keys ensures that pre-analyzed data is extracted in a governed way, respecting the data contracts of the source application.</p>
 
 <h3>2. Load (PostgreSQL)</h3>
-<p>Os dados brutos coletados em formato JSON são carregados diretamente, sem manipulações pesadas em memória, para a camada <em>Raw/Staging</em> de um banco de dados PostgreSQL isolado. Isso garante que o Data Lake/Warehouse tenha um histórico não corrompido do que foi ingerido.</p>
+<p>The raw data collected in JSON format is loaded directly, without heavy in-memory manipulation, into the <em>Raw/Staging</em> layer of an isolated PostgreSQL database. This ensures the Data Lake/Warehouse keeps an uncorrupted history of what was ingested.</p>
 
 <h3>3. Transform (dbt)</h3>
-<p>Com os dados já residindo no PostgreSQL, o Airflow dispara os modelos do <strong>dbt (Data Build Tool)</strong>. O dbt executa o processamento pesado de limpeza, padronização e estruturação dimensional utilizando o motor de SQL nativo do próprio Postgres. Isso finaliza a transição do dado bruto para um modelo analítico pronto para consumo (Views/Marts).</p>
+<p>With the data already in PostgreSQL, Airflow triggers the <strong>dbt (Data Build Tool)</strong> models. dbt performs the heavy lifting of cleaning, standardization, and dimensional structuring using Postgres' own native SQL engine. This completes the transition from raw data to an analytical model ready for consumption (Views/Marts).</p>
 
 <div style="text-align: center; margin-top: 48px;">
     <a href="{{ github }}" target="_blank" class="btn">
         <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
-        Acessar Repositório
+        View Repository
     </a>
 </div>

@@ -1,51 +1,53 @@
 ---
 layout: layouts/artigo.njk
-title: "Integração SQL Server e Data Lake: Avaliação de Performance e CETAS"
-description: "Como o SQL Server acessa Data Lakes: Parquet, predicate pushdown, tamanho de arquivos, tipagem e implementação prática com CETAS e OPENROWSET."
+title: "SQL Server and Data Lake Integration: Performance Evaluation and CETAS"
+description: "How SQL Server accesses Data Lakes: Parquet, predicate pushdown, file sizing, data typing, and practical implementation with CETAS and OPENROWSET."
 published: 2026
-topics: ["BANCO DE DADOS", "PARQUET", "INTERNALS", "DATA ENGINEERING"]
+topics: ["DATABASE", "PARQUET", "INTERNALS", "DATA ENGINEERING"]
+permalink: /en/articles/parquet.html
 ---
-<p>A integração do SQL Server com Data Lakes permite que a engine relacional acesse e processe dados distribuídos, facilitando a construção de pipelines de dados em arquiteturas modernas. Este documento detalha os aspectos técnicos que influenciam a performance de I/O e computação nesta arquitetura, além de apresentar a implementação técnica utilizando os comandos CETAS (Create External Table As Select) e OPENROWSET.</p>
+<p>The integration of SQL Server with Data Lakes enables the relational engine to access and process distributed data, facilitating the construction of data pipelines in modern architectures. This document details the technical aspects influencing I/O and compute performance in this architecture, alongside presenting technical implementation utilizing CETAS (Create External Table As Select) and OPENROWSET commands.</p>
 
 <hr class="divider">
 
-<h2>1. Arquitetura Interna e Justificativas Técnicas</h2>
+1. <h2>Internal Architecture and Technical Rationales
+</h2>
 
-<p>A leitura e gravação de dados através da rede exigem otimizações em nível de sistema de arquivos e execução de consultas para evitar a degradação de performance do banco de dados local. A escolha do formato de arquivo e a estruturação física dos dados são determinantes neste processo.</p>
+<p>Reading and writing data across the network requires optimizations at both the file system and query execution levels to prevent performance degradation on the local database. The choice of file format and the physical data layout are decisive in this process.</p>
 
 <ul>
-    <li><strong>Vantagens do Armazenamento Colunar (Parquet):</strong> O formato Parquet organiza os dados em colunas em vez de linhas. Esta estrutura facilita a aplicação de algoritmos de compressão eficientes (como Dictionary Encoding e Run-Length Encoding), reduzindo o espaço de armazenamento de forma substancial. Ademais, permite a projeção colunar, onde apenas as colunas especificadas no <code>SELECT</code> são lidas do disco e transferidas pela rede.</li>
-    <li><strong>Predicate Pushdown:</strong> Ao executar uma consulta com filtros (cláusula <code>WHERE</code>) através do <code>OPENROWSET</code>, o SQL Server tem a capacidade de delegar a avaliação desses filtros para a camada de armazenamento subjacente. Utilizando os metadados presentes no rodapé (footer) dos <em>Row Groups</em> do arquivo Parquet (como valores mínimos e máximos por bloco), a engine lê apenas os blocos que satisfazem os critérios da consulta, minimizando o volume de dados processados.</li>
-    <li><strong>Problemas Relacionados ao Tamanho dos Arquivos:</strong> O processamento de um grande número de arquivos pequenos introduz um alto custo (overhead) no sistema devido à necessidade de abrir requisições HTTP individuais, ler os metadados de cada arquivo e fechá-los posteriormente. Para otimizar o <em>throughput</em> de leitura sequencial em storages de objeto, as melhores práticas de engenharia de dados recomendam a consolidação de arquivos Parquet em tamanhos variando entre 100 MB e 1 GB.</li>
-    <li><strong>Impacto da Tipagem de Dados e Operações no TempDB:</strong> É imperativo manter a consistência dos tipos de dados (Data Types) entre o esquema relacional e o arquivo externo. Discrepâncias de tipagem forçam o otimizador do SQL Server a realizar conversões implícitas (Implicit Casts). Isso inibe a capacidade de aplicar o <em>Predicate Pushdown</em>, resultando na transferência integral do conjunto de dados pela rede para a memória local. Consequentemente, operações de <em>Join</em> ou ordenação que excedam a memória alocada (Memory Grant) resultarão em <em>Spills</em> para o disco físico no banco de dados <code>tempdb</code>, degradando severamente a performance.</li>
+    <li><strong>Advantages of Columnar Storage (Parquet):</strong> The Parquet format organizes data in columns rather than rows. This structure facilitates the application of efficient compression algorithms (such as Dictionary Encoding and Run-Length Encoding), substantially reducing storage footprint. Furthermore, it enables columnar projection, where only the columns specified in the <code>SELECT</code> statement are read from disk and transferred across the network.</li>
+    <li><strong>Predicate Pushdown:</strong> When executing a query with filters (a <code>WHERE</code> clause) via <code>OPENROWSET</code>, SQL Server has the ability to delegate the evaluation of those filters to the underlying storage layer. Using the metadata present in the footers of the Parquet file's <em>Row Groups</em> (such as minimum and maximum values per block), the engine reads only the blocks that satisfy the query criteria, minimizing the volume of processed data.</li>
+    <li><strong>File Sizing Issues:</strong> Processing a large number of small files introduces high system overhead due to the necessity of opening individual HTTP requests, reading each file's metadata, and closing them afterward. To optimize sequential read throughput in object storage, data engineering best practices recommend consolidating Parquet files into sizes ranging between 100 MB and 1 GB.</li>
+    <li><strong>Impact of Data Typing and TempDB Operations:</strong> It is imperative to maintain data type consistency between the relational schema and the external file. Typing discrepancies force the SQL Server optimizer to perform implicit casts. This inhibits the ability to apply <em>Predicate Pushdown</em>, resulting in the transfer of the entire dataset across the network into local memory. Consequently, Join or sorting operations that exceed the allocated memory (Memory Grant) will result in <em>Spills</em> to physical disk in the <code>tempdb</code> database, severely degrading performance.</li>
 </ul>
 
 <hr class="divider">
 
-<h2>2. Implementação Prática: Configuração de Acesso e Operações CETAS</h2>
+<h2>2. Practical Implementation: Access Configuration and CETAS Operations</h2>
 
-<p>O processo de exportação e leitura de dados externos requer a configuração inicial de objetos de segurança (credenciais) e mapeamento do Data Lake. Os exemplos a seguir utilizam dados genéricos de vendas para ilustrar a estruturação correta dos comandos T-SQL.</p>
+<p>The process of exporting and reading external data requires the initial configuration of security objects (credentials) and Data Lake mapping. The examples below use generic sales data to illustrate the correct structuring of T-SQL commands.</p>
 
-<h3>Passo 1: Configuração de Credenciais e Fonte de Dados Externa</h3>
-<p>Para habilitar o acesso seguro ao Azure Blob Storage ou Azure Data Lake Storage, é necessário definir a chave mestra de criptografia, armazenar o token de acesso e mapear o diretório raiz na fonte de dados externa.</p>
+<h3>Step 1: Configuration of Credentials and External Data Source</h3>
+<p>To enable secure access to Azure Blob Storage or Azure Data Lake Storage, it is necessary to define the database master key, store the access token, and map the root directory in the external data source.</p>
 
 {% codeblock "sql" %}
--- 1. Criação da Chave Mestra do Banco de Dados
+-- 1. Creation of the Database Master Key
 CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'SuaSenhaComplexaAqui_123!';
 
--- 2. Criação da Credencial de Banco de Dados (exemplo utilizando SAS Token)
+-- 2. Creation of the Database Scoped Credential (example using SAS Token)
 CREATE DATABASE SCOPED CREDENTIAL dl_credential
 WITH IDENTITY = 'SHARED ACCESS SIGNATURE',
 SECRET = 'sv=2022-11-02&ss=b&srt=sco&sp=rl&se=2025-01-01T00:00:00Z&st=2024-01-01T00:00:00Z&spr=https&sig=FAKE_SIGNATURE_HASH';
 
--- 3. Criação da Fonte de Dados Externa
+-- 3. Creation of the External Data Source
 CREATE EXTERNAL DATA SOURCE DS_DataLake_Sales
 WITH (
     LOCATION = 'abs://salesdata@datalakestorage.blob.core.windows.net/2024',
     CREDENTIAL = dl_credential
 );
 
--- 4. Definição do Formato de Arquivo Externo
+-- 4. Definition of the External File Format
 CREATE EXTERNAL FILE FORMAT ParquetFF
 WITH (
     FORMAT_TYPE = PARQUET,
@@ -53,11 +55,11 @@ WITH (
 );
 {% endcodeblock %}
 
-<h3>Passo 2: Exportação de Dados via CETAS</h3>
-<p>A operação CETAS permite a extração paralela de dados do banco relacional para o Data Lake. O padrão demonstrado a seguir inclui a exclusão imediata do objeto <code>EXTERNAL TABLE</code> local após a exportação, mantendo apenas os arquivos Parquet físicos e consolidados no ambiente de armazenamento externo para posterior uso analítico.</p>
+<h3>Step 2: Data Export via CETAS</h3>
+<p>The CETAS operation enables parallel data extraction from the relational database to the Data Lake. The pattern demonstrated below includes the immediate dropping of the local <code>EXTERNAL TABLE</code> object after export, retaining only the physical, consolidated Parquet files in the external storage environment for subsequent analytical use.</p>
 
 {% codeblock "sql" %}
---------------------------[ Exportação: SalesOrder ]--------------------------
+--------------------------[ Export: SalesOrder ]--------------------------
 CREATE EXTERNAL TABLE Ext_SalesOrder
 WITH (
     LOCATION = 'SalesOrder/',
@@ -70,10 +72,10 @@ FROM SalesHeader A
 INNER JOIN SalesOrderDetail B ON A.OrderID = B.OrderID
 WHERE YEAR(A.OrderDate) = 2024;
 
--- Remoção do metadado da tabela externa (os arquivos Parquet permanecem no Data Lake)
+-- Removal of the external table metadata (Parquet files remain in the Data Lake)
 DROP TABLE Ext_SalesOrder;
 
---------------------------[ Exportação: SystemAuditLog ]--------------------------
+--------------------------[ Export: SystemAuditLog ]--------------------------
 CREATE EXTERNAL TABLE Ext_SystemAuditLog
 WITH (
     LOCATION = 'SystemAuditLog/',
@@ -86,15 +88,15 @@ FROM SystemAuditLog A
 WHERE AuditDate >= '2024-01-01 00:00:00' 
   AND AuditDate <= '2024-12-31 23:59:59';
 
--- Remoção do metadado da tabela externa
+-- Removal of the external table metadata
 DROP TABLE Ext_SystemAuditLog;
 {% endcodeblock %}
 
-<h3>Passo 3: Virtualização de Dados utilizando OPENROWSET</h3>
-<p>Para consultar dados diretamente do Data Lake sem a necessidade de importá-los fisicamente para as tabelas relacionais do SQL Server (prevenindo o crescimento desnecessário do log de transações), a função <code>OPENROWSET</code> é aplicada.</p>
+<h3>Step 3: Data Virtualization using OPENROWSET</h3>
+<p>To query data directly from the Data Lake without needing to physically import it into SQL Server relational tables (preventing unnecessary transaction log growth), the <code>OPENROWSET</code> function is applied.</p>
 
 {% codeblock "sql" %}
--- Leitura direta e otimizada dos arquivos Parquet localizados no Data Lake
+-- Direct and optimized reading of Parquet files located in the Data Lake
 SELECT TOP 100 *
 FROM OPENROWSET(
     BULK 'SalesOrder/*.parquet',
@@ -103,4 +105,4 @@ FROM OPENROWSET(
 ) AS SalesData;
 {% endcodeblock %}
 
-<p>O isolamento das cargas de trabalho através de CETAS e <code>OPENROWSET</code> garante que as transações locais (OLTP) não sejam impactadas pela leitura de dados históricos. Ao mesmo tempo, volumes massivos de informações analíticas podem ser persistidos em formatos altamente otimizados e com custo de armazenamento reduzido. Obrigado por ler até aqui e bons estudos!</p>
+<p>Isolating workloads via CETAS and <code>OPENROWSET</code> ensures that local transactional workloads (OLTP) are not impacted by reading historical data. Simultaneously, massive volumes of analytical information can be persisted in highly optimized formats with reduced storage costs. Thanks for reading this far, and happy studying!</p>

@@ -1,59 +1,60 @@
 ---
 layout: layouts/artigo.njk
-title: "Da Query ao Result Set: PostgreSQL"
-description: "Análise da arquitetura interna do PostgreSQL: do Postmaster e conexões até o Parser, Rewriter, Planner e Executor."
+title: "From Query to Result Set: PostgreSQL"
+description: "Analysis of PostgreSQL's internal architecture: from Postmaster and connections to the Parser, Rewriter, Planner, and Executor."
 published: 2026
-topics: ["BANCO DE DADOS", "ARQUITETURA", "INTERNALS", "POSTGRESQL"]
+topics: ["DATABASE", "ARCHITECTURE", "INTERNALS", "POSTGRESQL"]
+permalink: /en/articles/arquitetura_pg.html
 ---
 
-<p>Anteriormente passamos pela arquitetura do SQL Server: driver, parser, binder, plan cache, optimizer... Agora, aproveitando o embalo, falaremos do PostgreSQL — Além de documentarmos mais um sistema de gerenciamento de banco de dados, usaremos o que foi capitado do SQL Server e reaproveitar aqui, preenchendo as lacunas de conhecimento com aquilo que difere e buscando entender do que se trata.</p>
+<p>Previously, we covered SQL Server's architecture: driver, parser, binder, plan cache, optimizer... Now, riding that momentum, we will discuss PostgreSQL — besides documenting another database management system, we will take what we captured from SQL Server and reuse it here, filling knowledge gaps with what differs and seeking to understand what it's all about.</p>
     
-<p>Esse artigo cobre da conexão até a execução da query — a parte de "arquitetura e especificação" do motor. Locks, MVCC e VACUUM ficam de fora desse artigo: Pois são assuntos longos e o foco aqui é entender como o motor funciona, como a query entra e sai, sem grandes especificações, afinal, os assuntos acima citados são extensos e merecem um artigo próprio, afinal entram, ao meu ver, no contexto de gerenciamento e fogem da arquitetura principal.</p>
+<p>This article covers everything from connection to query execution — the "architecture and specification" side of the engine. Locks, MVCC, and VACUUM are left out of this article because they are lengthy subjects, and the focus here is to understand how the engine works, how a query enters and exits, without major specifications. After all, the aforementioned topics are extensive and deserve their own dedicated article, as they belong, in my view, to the management context rather than core architecture.</p>
 
-<p>No SQL Server, a sua aplicação fala com um driver que mantém um pool de conexões dentro do próprio client. No PostgreSQL a lógica de "quem atende a conexão" é outra: Não existe pooling nativo dentro do driver. Toda conexão nova é recebida pelo Postmaster, o processo pai que fica escutando a porta 5432 (default), e ele responde criando um fork — um processo novo do sistema operacional, dedicado exclusivamente àquela sessão, do início ao fim dela.</p>
+<p>In SQL Server, your application talks to a driver that maintains a connection pool inside the client itself. In PostgreSQL, the logic of "who handles the connection" is different: there is no native pooling inside the driver. Every new connection is received by the <strong>Postmaster</strong>, the parent process listening on port 5432 (default), and it responds by creating a fork — a brand new operating system process dedicated exclusively to that session from start to finish.</p>
 
-<p>Se você não tem nenhuma ferramenta externa de pooling (PgBouncer, pgpool, ou pooling no nível da aplicação), toda conexão nova paga o custo de um fork. Se você tem, a ferramenta segura um conjunto de conexões já abertas com o Postgres e entrega uma delas pra sua aplicação sem passar pelo Postmaster de novo — mas se o pool estiver sem conexão livre no momento, ele ainda vai pedir um fork novo. Pooling reduz a frequência do fork, não elimina ele. Mas entre sempre pagar e, dependendo de uma boa configuração, pagar bem menos, o ideal sempre será o uso da ferramenta externa.</p>
+<p>If you don't use any external pooling tool (PgBouncer, pgpool, or application-level pooling), every new connection pays the cost of a fork. If you do, the tool holds a set of pre-opened connections with Postgres and hands one of them to your application without going through the Postmaster again — but if the pool has no free connection at that moment, it will still request a new fork. Pooling reduces fork frequency; it doesn't eliminate it. But between always paying and—depending on good configuration—paying much less, using an external tool is always the ideal choice.</p>
 
 <blockquote>
-    Fato curioso: essa é a diferença arquitetural mais fundamental entre os dois bancos, e ela se propaga pra tudo que vem depois. SQL Server usa threads dentro de um processo só, coordenadas pelo SQLOS, o próprio scheduler do motor. PostgreSQL usa um processo do SO por conexão. Isso explica por que "muitas conexões simultâneas" é um problema de escala bem mais sério no Postgres — cada conexão ociosa ainda consome memória de processo do SO, não só uma thread leve — e por que ferramentas de pooling externo são consideradas infraestrutura obrigatória em produção, não uma opção.
+    Fun fact: this is the most fundamental architectural difference between the two databases, and it propagates to everything that follows. SQL Server uses threads inside a single process, coordinated by SQLOS, the engine's own scheduler. PostgreSQL uses one OS process per connection. This explains why "many simultaneous connections" is a much more serious scaling problem in Postgres — every idle connection still consumes OS process memory, not just a lightweight thread — and why external pooling tools are considered mandatory infrastructure in production, not an option.
 </blockquote>
 
-<p>A partir daqui a query já chegou fisicamente ao backend process dedicado a ela. É aqui que a arquitetura interna do PostgreSQL assume.</p>
+<p>From here, the query has physically arrived at the backend process dedicated to it. This is where PostgreSQL's internal architecture takes over.</p>
 
 <hr class="divider">
 
-<h2>Passada a conexão, entramos no motor de verdade: o Parser</h2>
-<p>Assim como no SQL Server, a primeira etapa é uma checagem puramente sintática. O Parser do Postgres não sabe se a tabela existe, não sabe se a coluna existe — só verifica se o SQL está escrito de um jeito que faz sentido gramaticalmente, seguindo a gramática formal do dialeto do sistema em questão.</p>
-<p>Se você já recebeu um erro do tipo <code>syntax error at or near...</code>, foi o parser reclamando. Mesma lógica do SQL Server: fase mais barata, mais rápida, e erro de sintaxe nunca é problema de performance.</p>
+<h2>Past the connection, we enter the real engine: the Parser</h2>
+<p>Just like in SQL Server, the first stage is a purely syntactic check. Postgres's Parser doesn't know if the table exists, it doesn't know if the column exists — it only verifies whether the SQL is written in a way that makes grammatical sense, following the formal grammar of the system's dialect.</p>
+<p>If you've ever received an error like <code>syntax error at or near...</code>, that was the parser complaining. Same logic as SQL Server: cheapest phase, fastest phase, and syntax errors are never a performance problem.</p>
 
-<h3>Depois da sintaxe, vem a checagem de verdade: Parse Analysis</h3>
-<p>Essa etapa é o equivalente direto do Binder/Algebrizer do SQL Server. Ela resolve nomes — a tabela public.pedidos existe? a coluna cliente_id existe nela? — e tipos: dá pra comparar essa coluna integer com esse parâmetro text? É aqui que aparecem erros como: <code>relation "pedidos" does not exist</code> ou <code>column "cliente_id" does not exist</code>.</p>
+<h3>After syntax comes the real check: Parse Analysis</h3>
+<p>This step is the direct equivalent of SQL Server's Binder/Algebrizer. It resolves names — does the table <code>public.pedidos</code> exist? does the column <code>cliente_id</code> exist in it? — and types: can this <code>integer</code> column be compared to this <code>text</code> parameter? This is where errors like <code>relation "pedidos" does not exist</code> or <code>column "cliente_id" does not exist</code> appear.</p>
 
 <blockquote>
-    Fato curioso: conversões de tipo implícitas acontecem aqui, com a mesma consequência que no SQL Server — perda de SARGability. Um <code>WHERE coluna::text = $1</code> pode empurrar o planner pra um Seq Scan onde um Index Scan seria possível, exatamente pelo mesmo motivo que um <code>CONVERT()</code> mal colocado derruba um index seek no SQL Server. A raiz do problema é idêntica nos dois motores: o índice é construído sobre o tipo original da coluna, e uma conversão no meio do caminho impede o otimizador de casar a expressão do WHERE com esse índice.
+    Fun fact: implicit type conversions happen here, with the same consequence as in SQL Server — loss of SARGability. A <code>WHERE coluna::text = $1</code> can push the planner toward a Seq Scan where an Index Scan would be possible, for the exact same reason that a poorly placed <code>CONVERT()</code> kills an index seek in SQL Server. The root of the problem is identical in both engines: the index is built on the column's original type, and a conversion along the way prevents the optimizer from matching the WHERE expression with that index.
 </blockquote>
 
-<h3>Uma etapa nova (para DBA's SQL Server): o Rewriter</h3>
-<p>Depois da Parse Analysis, o Postgres passa por uma etapa própria chamada Rewriter, que consulta as regras (rules) armazenadas no catálogo do sistema. A aplicação mais comum disso, e a que você vai encontrar no dia a dia, é a expansão de views: quando sua query referencia uma view, é o Rewriter que substitui essa referência pela query real por trás dela, antes de qualquer coisa ser planejada. O SQL Server resolve views de um jeito mais direto dentro do próprio binder/otimizador; o Postgres trata isso como um estágio de reescrita de query separado e explícito.</p>
+<h3>A new stage (for SQL Server DBAs): the Rewriter</h3>
+<p>After Parse Analysis, Postgres goes through a proprietary stage called the Rewriter, which consults the rules stored in the system catalog. The most common application of this, and the one you will encounter day-to-day, is view expansion: when your query references a view, the Rewriter replaces that reference with the actual underlying query before anything is planned. SQL Server resolves views more directly inside the binder/optimizer itself; Postgres treats this as a separate and explicit query rewrite stage.</p>
 
 <hr class="divider">
 
-<h2>Antes de pensar, o motor decide: você tem um PREPARE?</h2>
-<p>Aqui mora a maior diferença comportamental entre os dois bancos, que apesar de sua complexidade, funciona bem: o PostgreSQL não tem plan cache automático. Não existe um cache global guardando planos de queries que chegaram pelo protocolo simples. Toda query "solta" — sem PREPARE — é parseada, reescrita, planejada e executada do zero, e o plano é descartado logo em seguida. Não existe soft parse aqui; sem PREPARE, é sempre hard parse (Termos retirados do Oracle, mas em uma linguagem mais familiar, sem PREPARE ele recompila, SEMPRE!).</p>
+<h2>Before thinking, the engine decides: do you have a PREPARE?</h2>
+<p>Here lies the biggest behavioral difference between the two databases, which, despite its complexity, works well: PostgreSQL does not have an automatic plan cache. There is no global cache holding plans for queries arriving via the simple protocol. Every "loose" query — without a PREPARE — is parsed, rewritten, planned, and executed from scratch, and the plan is discarded right after. There is no soft parse here; without PREPARE, it is always a hard parse (terms borrowed from Oracle, but in more familiar language: without PREPARE, it ALWAYS recompiles!).</p>
 
-<p>Cache de plano só entra em cena se você usa prepared statements — via <code>PREPARE nome AS ...</code> explícito, ou via protocolo estendido do driver (o JDBC, por exemplo, tem um <code>prepareThreshold</code> configurável; drivers em Node/Python normalmente expõem algo parecido). E mesmo aí, o comportamento é mais esperto que um cache raso:</p>
+<p>Plan caching only enters the picture if you use prepared statements — via explicit <code>PREPARE name AS ...</code>, or via the driver's extended protocol (JDBC, for example, has a configurable <code>prepareThreshold</code>; Node/Python drivers usually expose something similar). And even then, the behavior is smarter than a shallow cache:</p>
 
-<p>PREPARE não gera um plano. Ele guarda a query já parseada e reescrita, mas o planejamento em si só acontece quando você chama EXECUTE. Da primeira até a quinta execução, o Postgres gera um plano custom a cada chamada — replaneja usando os valores reais dos parâmetros, do mesmo jeito que faria numa query solta — e vai calculando o custo médio estimado desses planos. Na sexta execução, ele gera um plano genérico (sem conhecer valores futuros de parâmetro) e compara o custo estimado dele com a média dos planos custom. Se o genérico não for muito pior, o Postgres passa a reusar esse plano genérico dali em diante — sem replanejar. Se for bem pior, continua gerando plano custom pra sempre.</p>
+<p>PREPARE does not generate a plan. It stores the already parsed and rewritten query, but planning itself only happens when you call EXECUTE. From the first through the fifth execution, Postgres generates a custom plan on each call — replanning using actual parameter values, exactly as it would for a loose query — and calculates the estimated average cost of these plans. On the sixth execution, it generates a generic plan (without knowing future parameter values) and compares its estimated cost with the average of the custom plans. If the generic plan isn't much worse, Postgres starts reusing that generic plan from then on — without replanning. If it is significantly worse, it continues generating custom plans forever.</p>
 
 <blockquote>
-    Fato curioso: isso torna o parameter sniffing do Postgres adaptativo, ao contrário do SQL Server, onde o plano é compilado uma vez (baseado nos valores da primeira execução) e fica preso até uma recompilação forçada. No Postgres, se a coluna tem distribuição de valores muito desigual — um flag que é 99% 'Y' e 1% 'N', por exemplo — o plano genérico pode ser dramaticamente pior que o custom, porque ele não sabe qual valor vai vir. Existe até um caso relatado na lista de discussão oficial do Postgres de um plano genérico rodando 158 mil vezes mais lento que o custom equivalente. Pra esses casos, dá pra forçar o comportamento com <code>SET plan_cache_mode = 'force_custom_plan'</code> (ou <code>force_generic_plan</code>, se for o contrário que você quer).
+    Fun fact: this makes Postgres's parameter sniffing adaptive, unlike SQL Server, where the plan is compiled once (based on the first execution's values) and stays locked until forced recompilation. In Postgres, if a column has highly skewed data distribution — a flag that is 99% 'Y' and 1% 'N', for example — the generic plan can be dramatically worse than the custom one because it doesn't know which value is coming. There is even a case reported on the official Postgres mailing list of a generic plan running 158,000 times slower than the equivalent custom plan. For these cases, you can force behavior with <code>SET plan_cache_mode = 'force_custom_plan'</code> (or <code>force_generic_plan</code>, if you want the opposite).
 </blockquote>
 
-<p>Pra ver esse comportamento acontecendo:</p>
+<p>To see this behavior in action:</p>
 
 {% codeblock "sql" %}
--- Ver os prepared statements da sessão atual: quantas vezes cada um
--- rodou como plano custom vs. genérico
+-- View active prepared statements for the current session: how many times each
+-- ran as a custom vs. generic plan
 SELECT name,
        statement,
        generic_plans,
@@ -61,46 +62,46 @@ SELECT name,
        parameter_types
 FROM pg_prepared_statements;
 
--- Forçar sempre plano custom numa sessão específica — útil pra debugar
--- um caso onde o plano genérico parece ter ficado ruim
+-- Force custom plan always in a specific session — useful for debugging
+-- a case where the generic plan appears to have degraded
 SET plan_cache_mode = 'force_custom_plan';
 
--- Conferir, via EXPLAIN, se a execução atual está usando plano
--- genérico (aparece com $1, $2...) ou custom (valores literais substituídos)
-EXPLAIN EXECUTE nome_do_prepared(valor);
+-- Check via EXPLAIN whether current execution is using a generic plan
+-- (appears with $1, $2...) or a custom plan (literal values substituted)
+EXPLAIN EXECUTE prepared_statement_name(value);
 {% endcodeblock %}
 
 <hr class="divider">
 
-<h2>Sem PREPARE ou depois da decisão: entra o Planner</h2>
-<p>O Planner do Postgres is conceitualmente o mesmo tipo de peça que o Query Optimizer do SQL Server: ele não busca o plano perfeito, busca um plano bom o suficiente, rápido o suficiente. O processo segue a mesma lógica de fundo — simplificação da query, checagem de caso trivial (uma busca direta por chave primária não precisa comparar alternativas), e, se não for trivial, geração de planos candidatos com custo estimado via estatísticas.</p>
-<p>As estatísticas usadas aqui vêm do catálogo pg_statistic (exposto de forma legível via a view pg_stats), e quem popula isso é o ANALYZE — o equivalente direto do UPDATE STATISTICS do SQL Server. Estatística desatualizada tem exatamente a mesma consequência nos dois bancos: estimativa de linhas errada, escolha de join errada, plano ruim.</p>
+<h2>Without PREPARE or after the decision: enter the Planner</h2>
+<p>Postgres's Planner is conceptually the same type of component as SQL Server's Query Optimizer: it doesn't search for the absolute perfect plan, it searches for a good enough plan, fast enough. The process follows the same background logic — query simplification, checking for trivial cases (a direct primary key lookup doesn't need to compare alternatives), and, if non-trivial, generating candidate plans with costs estimated via statistics.</p>
+<p>The statistics used here come from the <code>pg_statistic</code> catalog (exposed cleanly via the <code>pg_stats</code> view), populated by <code>ANALYZE</code> — the direct equivalent of SQL Server's <code>UPDATE STATISTICS</i>. Outdated statistics have the exact same consequence in both databases: wrong row estimation, wrong join choice, bad plan.</p>
 
 <blockquote>
-    Fato curioso: pra queries com muitas tabelas envolvidas em joins, o Postgres troca a busca exaustiva por candidatos por uma heurística chamada GEQO (Genetic Query Optimizer) — um algoritmo genético mesmo, que evolui populações de planos candidatos em vez de comparar todas as combinações possíveis. O SQL Server não tem nada parecido; ele sempre faz busca determinística, só limitada por tempo/custo de otimização.
+    Fun fact: for queries involving many tables in joins, Postgres swaps exhaustive candidate searching for a heuristic called GEQO (Genetic Query Optimizer) — a literal genetic algorithm that evolves populations of candidate plans instead of comparing all possible combinations. SQL Server has nothing like this; it always performs deterministic searches, limited only by optimization time/cost.
 </blockquote>
 
 <hr class="divider">
 
-<h2>Com o plano decidido — custom, genérico, ou recém-planejado sem PREPARE — a query segue pro Executor:</h2>
-<p>Roda a árvore do plano de baixo pra cima, puxando linhas conforme necessário, do mesmo jeito conceitual do SQL Server. O resultado também não é montado inteiro no servidor: ele é transmitido em stream pelo protocolo libpq, linha por linha, à medida que é produzido — o mesmo comportamento do TDS no SQL Server, incluindo a mesma armadilha de diagnóstico: se o client processa devagar, o Postgres fica esperando ele consumir, o que aparece como wait ClientWrite — o equivalente ao ASYNC_NETWORK_IO, e igualmente fácil de confundir com "problema de rede" quando não é.</p>
+<h2>With the plan decided — custom, generic, or freshly planned without PREPARE — the query proceeds to the Executor:</h2>
+<p>It runs the plan tree from bottom to top, pulling rows as needed, following the exact same conceptual approach as SQL Server. The result isn't fully assembled on the server either: it is streamed via the <code>libpq</code> protocol, row by row, as it is produced — matching TDS behavior in SQL Server, including the same diagnostic trap: if the client processes slowly, Postgres sits waiting for it to consume, which shows up as a <code>ClientWrite</code> wait — the equivalent to <code>ASYNC_NETWORK_IO</code>, and equally easy to mistake for a "network problem" when it isn't.</p>
 
-<p>O que acontece dentro dessa execução — como o Postgres controla concorrência sem os locks pessimistas do SQL Server, por que praticamente não existe lock escalation aqui, e por que VACUUM é rotina essencial — é assunto grande o suficiente pra ganhar um novo artigo, com diagrama próprio.</p>
+<p>What happens inside this execution — how Postgres controls concurrency without SQL Server's pessimistic locks, why lock escalation practically doesn't exist here, and why VACUUM is an essential routine — is a large enough subject to earn a new article with its own diagram.</p>
 
-<p>Tenha essa lista em mente — é o que se deve consultar quando quero entender o que está acontecendo entre a query sair da aplicação e o plano ficar pronto:</p>
+<p>Keep this list in mind — it's what you should consult when trying to understand what happens between a query leaving the application and a plan being ready:</p>
 <ul>
-    <li><strong>Prepared statements ativos e uso custom vs. genérico:</strong> pg_prepared_statements</li>
-    <li><strong>Conexões ativas e o processo backend de cada uma:</strong> pg_stat_activity</li>
-    <li><strong>Forçar plano custom ou genérico manualmente:</strong> plan_cache_mode</li>
-    <li><strong>Estatísticas usadas pelo planner:</strong> pg_stats, e ANALYZE pra atualizar</li>
-    <li><strong>Queries mais executadas e tempo gasto em parse/planejamento:</strong> pg_stat_statements (com track_planning ligado)</li>
-    <li><strong>Ver o plano real escolhido pra um prepared statement:</strong> EXPLAIN EXECUTE nome(valores)</li>
+    <li><strong>Active prepared statements and custom vs. generic usage:</strong> <code>pg_prepared_statements</code></li>
+    <li><strong>Active connections and each one's backend process:</strong> <code>pg_stat_activity</code></li>
+    <li><strong>Manually forcing custom or generic plans:</strong> <code>plan_cache_mode</code></li>
+    <li><strong>Statistics used by the planner:</strong> <code>pg_stats</code>, and <code>ANALYZE</code> to update</li>
+    <li><strong>Most executed queries and time spent in parsing/planning:</strong> <code>pg_stat_statements</code> (with <code>track_planning</code> enabled)</li>
+    <li><strong>Viewing the actual chosen plan for a prepared statement:</strong> <code>EXPLAIN EXECUTE name(values)</code></li>
 </ul>
 
-<p>Assim como no artigo do SQL Server, a regra principal é: antes de sair mexendo em índice, entenda por qual caminho a query passou. No Postgres esse caminho tem detalhes a mais que diferem bem, porém vão ajudar a entender o porque o banco já possui uma boa query, plano, índice e ainda sim, de vez em quando fica lento.</p>
+<p>Just like in the SQL Server article, the golden rule is: before rushing to tweak an index, understand the path the query took. In Postgres, that path has extra details that differ significantly, but they will help you understand why a database already has a good query, plan, and index, yet occasionally feels slow.</p>
 
-<p>Observe o mapa, ele vai ajudar a fixar visualmente o que foi tratado:</p>
+<p>Observe the map; it will help you visually anchor what was covered:</p>
 
-{% figure "/images/topologia_postgresql.png", "Topologia do PostgreSQL", "Fluxo arquitetural do PostgreSQL: do Postmaster até o Executor." %}
+{% figure "/images/topologia_postgresql.png", "PostgreSQL Topology", "PostgreSQL architectural flow: from Postmaster to Executor." %}
 
-<p>Para os próximos artigos falaremos de mais assuntos com PostgreSQL, como: MVCC, lock manager, VACUUM, etc — parte que há diversas diferenças em relação ao SQL Server. Obrigado por ler até aqui e bons estudos!</p>
+<p>For upcoming articles, we will discuss more topics regarding PostgreSQL, such as: MVCC, lock manager, VACUUM, etc. — areas where there are several differences compared to SQL Server. Thank you for reading this far, and happy studying!</p>

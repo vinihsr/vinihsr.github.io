@@ -4,9 +4,15 @@
 {% if description %}<meta name="description" content="{{ description }}">{% endif %}
 
 <script>
-    (function() {
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+    (function () {
+        try {
+            var pref = localStorage.getItem('theme') || 'dark';
+            if (pref !== 'light' && pref !== 'dark' && pref !== 'system') pref = 'dark';
+            var dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            var root = document.documentElement;
+            root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            root.setAttribute('data-theme-pref', pref);
+        } catch (e) {}
     })();
 </script>
 

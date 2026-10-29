@@ -1,35 +1,36 @@
 ---
 layout: layouts/projeto.njk
+lang: en
 title: "Zenith App"
-description: "Aplicativo clínico voltado à facilitação de diagnósticos, fundamentado em rigorosas políticas de privacidade e resiliência de dados."
-topics: ["TYPESCRIPT", "LGPD", "GOVERNANÇA DE DADOS"]
+description: "Clinical app designed to support diagnosis, grounded in strict privacy policies and data resilience."
+topics: ["TYPESCRIPT", "LGPD", "DATA GOVERNANCE"]
 github: "https://github.com/zenith-health/zenith-app"
 ---
 
-<p>O <strong>Zenith App</strong> é um projeto colaborativo desenvolvido para o setor de <em>Health Tech</em>. Seu objetivo principal é modernizar e facilitar o diagnóstico médico através da digitalização e do gerenciamento inteligente de <strong>anamneses</strong> clínicas.</p>
-<p>Diferente de aplicações convencionais, o setor de saúde exige um tratamento de dados altamente sensível. Por isso, a arquitetura deste projeto foi desenhada com um forte viés de segurança, resiliência e conformidade jurídica.</p>
+<p><strong>Zenith App</strong> is a collaborative project built for the <em>Health Tech</em> sector. Its main goal is to modernize and ease medical diagnosis through the digitization and intelligent management of clinical <strong>medical histories (anamnesis)</strong>.</p>
+<p>Unlike conventional applications, the healthcare sector demands highly sensitive data handling. For that reason, this project's architecture was designed with a strong emphasis on security, resilience, and legal compliance.</p>
 
 <hr class="divider">
 
-<h2>Segurança e Compliance (LGPD)</h2>
-<p>O gerenciamento de dados de pacientes impôs desafios arquiteturais que foram solucionados aplicando os princípios da Lei Geral de Proteção de Dados (LGPD) diretamente na lógica do sistema:</p>
+<h2>Security and Compliance (LGPD)</h2>
+<p>Managing patient data raised architectural challenges that were solved by applying the principles of Brazil's General Data Protection Law (LGPD) directly in the system's logic:</p>
 
 <ul>
-    <li><strong>Termos e Condições (T&C):</strong> Implementação de fluxos de aceite explícito, garantindo que a coleta e o uso de dados de saúde ocorram apenas mediante consentimento rastreável.</li>
-    <li><strong>Direito ao Esquecimento (Exclusão Total):</strong> Desenvolvimento de rotinas de <em>Hard Delete</em>, assegurando que, mediante solicitação, os dados do usuário e seus prontuários sejam criptograficamente apagados e permanentemente removidos do banco de dados, sem deixar resíduos transacionais.</li>
+    <li><strong>Terms and Conditions (T&amp;C):</strong> Implementation of explicit-consent flows, ensuring that health data is collected and used only with traceable consent.</li>
+    <li><strong>Right to Erasure (Full Deletion):</strong> Development of <em>Hard Delete</em> routines, ensuring that, upon request, the user's data and records are cryptographically erased and permanently removed from the database, leaving no transactional residue.</li>
 </ul>
 
-<h2>Resiliência e Governança de Dados</h2>
-<p>Como informações médicas são críticas e não podem ser perdidas, o banco de dados da aplicação foi estruturado com políticas preventivas:</p>
+<h2>Resilience and Data Governance</h2>
+<p>Since medical information is critical and cannot be lost, the application's database was structured with preventive policies:</p>
 
 <ul>
-    <li><strong>Backup & Restore:</strong> Implementação de rotinas de contingência, garantindo snapshots periódicos e testes de restauração. Essa política assegura que a aplicação possua um tempo de recuperação (RTO/RPO) aceitável em cenários de falha, mantendo a integridade do histórico clínico.</li>
+    <li><strong>Backup &amp; Restore:</strong> Implementation of contingency routines, ensuring periodic snapshots and restore tests. This policy gives the application an acceptable recovery time (RTO/RPO) in failure scenarios, preserving the integrity of the clinical history.</li>
 </ul>
 
 <div style="text-align: center; margin-top: 48px;">
-    <p style="margin-bottom: 24px;">Este foi um projeto desenvolvido em equipe, consolidando práticas de versionamento e metodologias ágeis.</p>
+    <p style="margin-bottom: 24px;">This was a team project, consolidating version control practices and agile methodologies.</p>
     <a href="{{ github }}" target="_blank" class="btn">
         <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
-        Acessar Repositório
+        View Repository
     </a>
 </div>

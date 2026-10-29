@@ -1,46 +1,47 @@
 ---
 layout: layouts/projeto.njk
+lang: en
 title: "E-Commerce Analytics Pipeline"
-description: "Orquestração de pipeline de dados automatizado utilizando uma Modern Data Stack rodando inteiramente em containers."
+description: "Automated data pipeline orchestration using a Modern Data Stack running entirely in containers."
 topics: ["AIRFLOW", "PYSPARK", "DBT", "MINIO", "DOCKER"]
 github: "https://github.com/vinihsr/e-commerce_pyspark_pipeline"
 ---
 
-<p>Este projeto consiste em um pipeline end-to-end de engenharia de dados que simula o fluxo completo de uma operação de e-commerce. A arquitetura foi desenvolvida para orquestrar desde a geração e ingestão de dados brutos (simulando registros "sujos") até a entrega de métricas limpas e modeladas em um banco de dados relacional (Serving Layer).</p>
+<p>This project is an end-to-end data engineering pipeline that simulates the full flow of an e-commerce operation. The architecture was built to orchestrate everything from the generation and ingestion of raw data (simulating "dirty" records) to the delivery of clean, modeled metrics in a relational database (Serving Layer).</p>
 
-<h3>Fluxo de Orquestração (Airflow DAG)</h3>
-<p>O pipeline é executado em um cronograma diário totalmente automatizado pelo Apache Airflow, seguindo as etapas:</p>
+<h3>Orchestration Flow (Airflow DAG)</h3>
+<p>The pipeline runs on a fully automated daily schedule managed by Apache Airflow, following these steps:</p>
 <ol>
-    <li><strong>Ingestão (Raw):</strong> Geração de dados sintéticos de e-commerce (pedidos, eventos, produtos) e upload direto para o MinIO (Data Lake local compatível com S3).</li>
-    <li><strong>Processamento e Limpeza:</strong> Rotinas em PySpark leem os arquivos brutos, aplicam validações de schema e limpam dados intencionalmente corrompidos.</li>
-    <li><strong>Enriquecimento e Agregação:</strong> O Spark cruza (JOIN) as tabelas de pedidos com informações de produtos e calcula KPIs primários (ex: faturamento diário, top produtos e retenção).</li>
-    <li><strong>Carga no Data Warehouse:</strong> Os resultados agregados são ingeridos em um banco PostgreSQL.</li>
-    <li><strong>Modelagem Dimensional:</strong> O dbt (Data Build Tool) assume a transformação final, construindo as camadas <em>staging</em> e <em>marts</em> para disponibilizar as tabelas finais para consumo analítico.</li>
+    <li><strong>Ingestion (Raw):</strong> Generation of synthetic e-commerce data (orders, events, products) and direct upload to MinIO (a local S3-compatible Data Lake).</li>
+    <li><strong>Processing and Cleaning:</strong> PySpark routines read the raw files, apply schema validations, and clean intentionally corrupted data.</li>
+    <li><strong>Enrichment and Aggregation:</strong> Spark joins the orders tables with product information and calculates primary KPIs (e.g., daily revenue, top products, and retention).</li>
+    <li><strong>Data Warehouse Load:</strong> The aggregated results are ingested into a PostgreSQL database.</li>
+    <li><strong>Dimensional Modeling:</strong> dbt (Data Build Tool) takes over the final transformation, building the <em>staging</em> and <em>marts</em> layers to expose the final tables for analytical consumption.</li>
 </ol>
 
-<h3>Stack Tecnológica</h3>
+<h3>Tech Stack</h3>
 <ul>
-    <li><strong>Apache Spark (PySpark):</strong> Limpeza de dados, enriquecimento e agregações pesadas.</li>
-    <li><strong>Apache Airflow:</strong> Agendamento, orquestração e paralelismo das tarefas.</li>
-    <li><strong>dbt (Data Build Tool):</strong> Transformação analítica e documentação no Data Warehouse.</li>
-    <li><strong>PostgreSQL:</strong> Camada de consumo (Serving Layer) para as tabelas finais.</li>
-    <li><strong>MinIO:</strong> Armazenamento de objetos (Local S3-compatible).</li>
-    <li><strong>Docker Compose:</strong> Provisionamento e isolamento de toda a infraestrutura local.</li>
+    <li><strong>Apache Spark (PySpark):</strong> Data cleaning, enrichment, and heavy aggregations.</li>
+    <li><strong>Apache Airflow:</strong> Scheduling, orchestration, and task parallelism.</li>
+    <li><strong>dbt (Data Build Tool):</strong> Analytical transformation and documentation in the Data Warehouse.</li>
+    <li><strong>PostgreSQL:</strong> Consumption layer (Serving Layer) for the final tables.</li>
+    <li><strong>MinIO:</strong> Object storage (local, S3-compatible).</li>
+    <li><strong>Docker Compose:</strong> Provisioning and isolation of the entire local infrastructure.</li>
 </ul>
 
 <hr class="divider">
 
-<h2>DataOps: Execução e Deploy</h2>
-<p>A infraestrutura é provisionada via Docker, garantindo reprodutibilidade. Abaixo estão os passos para inicializar a stack.</p>
+<h2>DataOps: Running and Deploying</h2>
+<p>The infrastructure is provisioned through Docker, ensuring reproducibility. Below are the steps to start the stack.</p>
 
-<p>1. Crie os diretórios de persistência e ajuste permissões do Airflow:</p>
+<p>1. Create the persistence directories and adjust Airflow permissions:</p>
 {% codeblock "bash" %}
 mkdir -p logs/scheduler dags plugins data
 chmod -R 777 logs data dbt_project
 echo "AIRFLOW_UID=$(id -u)" >> .env
 {% endcodeblock %}
 
-<p>2. Faça o download dos drivers (JARs) necessários para o Spark comunicar com o MinIO (S3) e PostgreSQL:</p>
+<p>2. Download the drivers (JARs) Spark needs to communicate with MinIO (S3) and PostgreSQL:</p>
 {% codeblock "bash" %}
 mkdir -p spark/jars
 wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.2/hadoop-aws-3.3.2.jar -P spark/jars/
@@ -48,24 +49,24 @@ wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.901/a
 wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar -P spark/jars/
 {% endcodeblock %}
 
-<p>3. Construa e inicie os containers (Acesse a interface do Airflow via <code>localhost:8080</code> e ative a DAG):</p>
+<p>3. Build and start the containers (open the Airflow UI at <code>localhost:8080</code> and enable the DAG):</p>
 {% codeblock "bash" %}
 docker compose build
 docker compose up airflow-init
 docker compose up -d
 {% endcodeblock %}
 
-<h3>Preparação para Nuvem (Cloud Readiness)</h3>
-<p>O pipeline foi projetado visando portabilidade para ambientes cloud. Para migrar para a AWS, as alterações são mínimas e configuráveis via variáveis de ambiente, não exigindo reescrita no código PySpark:</p>
+<h3>Cloud Readiness</h3>
+<p>The pipeline was designed with portability to cloud environments in mind. To migrate to AWS, the changes are minimal and configurable through environment variables, with no rewrite of the PySpark code:</p>
 <ul>
-    <li>Substituir a URI do <code>MINIO_ENDPOINT</code> pelo endpoint da região do AWS S3.</li>
-    <li>Injetar as <em>Access Keys</em> do IAM da AWS.</li>
-    <li>Substituir a conexão local do PostgreSQL pelo endpoint de um banco AWS RDS.</li>
+    <li>Replace the <code>MINIO_ENDPOINT</code> URI with the AWS S3 regional endpoint.</li>
+    <li>Inject the AWS IAM <em>Access Keys</em>.</li>
+    <li>Replace the local PostgreSQL connection with the endpoint of an AWS RDS database.</li>
 </ul>
 
 <div style="text-align: center; margin-top: 48px;">
     <a href="{{ github }}" target="_blank" class="btn">
         <span class="iconify" data-icon="mdi:github" style="margin-right: 8px; font-size: 1.2rem;"></span>
-        Acessar Repositório
+        View Repository
     </a>
 </div>
