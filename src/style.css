@@ -7,7 +7,10 @@
    4  Layout             11 Código
    5  Header             12 Figuras e modal
    6  Botões             13 Estados (hover, active, foco)
-   7  Seletor de tema    14 Responsivo e movimento reduzido
+   7  Seletor de tema    14 Responsivo (telas grandes, tablet, celular)
+
+   Medidas em rem: ao mudar o tamanho da raiz (seção 14), todo o
+   layout escala junto.
    ============================================================= */
 
 
@@ -34,9 +37,9 @@
     /* Sombras e raios */
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
 
     /* Fontes */
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -55,9 +58,10 @@
     --lh-ui: 1.6;
     --lh-text: 1.75;
 
-    /* Layout */
-    --container: 1100px;
-    --measure: 42rem;    /* coluna de leitura, ~70 caracteres */
+    /* Layout (valores para a raiz de 16px; escalam com ela) */
+    --container: 68.75rem;   /* 1100px */
+    --measure: 42rem;        /* coluna de leitura, ~70 caracteres */
+    --gutter: 2rem;          /* margem lateral */
 }
 
 [data-theme="dark"] {
@@ -136,12 +140,12 @@ h3 { font-size: var(--fs-xl);  font-weight: 600; line-height: 1.35; letter-spaci
     width: 100%;
     max-width: var(--container);
     margin: 0 auto;
-    padding: 0 32px;
+    padding-inline: var(--gutter);
 }
 
 .main-content {
     flex: 1;
-    padding-block: 60px;
+    padding-block: 3.75rem;
 }
 
 
@@ -159,7 +163,8 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-block: 12px;
+    gap: 1rem;
+    padding-block: 0.75rem;
 }
 
 .logo {
@@ -168,12 +173,13 @@ header {
     font-family: var(--font-code);
     font-size: var(--fs-md);
     font-weight: 700;
+    white-space: nowrap;
     color: var(--title-color);
 }
 
 .logo::after {
     content: '█';
-    margin-left: 6px;
+    margin-left: 0.375rem;
     color: var(--primary-color);
     animation: blink 1s step-end infinite;
 }
@@ -186,12 +192,13 @@ header {
 .nav-right {
     display: flex;
     align-items: center;
-    gap: 20px;
+    flex-shrink: 0;
+    gap: 1.25rem;
 }
 
 .nav-links {
     display: flex;
-    gap: 28px;
+    gap: 1.75rem;
 }
 
 .nav-links a {
@@ -211,7 +218,7 @@ header {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 20px;
+    padding: 0.625rem 1.25rem;
     background-color: var(--primary-color);
     color: var(--bg-color) !important;
     border: 1px solid var(--primary-color);
@@ -229,7 +236,7 @@ header {
 }
 
 .btn-sm {
-    padding: 6px 14px;
+    padding: 0.375rem 0.875rem;
     font-family: var(--font-code);
     font-size: var(--fs-sm);
 }
@@ -239,8 +246,8 @@ header {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 36px;
-    padding: 0 14px;
+    height: 2.25rem;
+    padding: 0 0.875rem;
     background-color: transparent;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -255,9 +262,9 @@ header {
 /* ========== 7. Seletor de tema (dropdown) ========== */
 .theme-switch { position: relative; }
 
-.theme-trigger { width: 36px; padding: 0; }
+.theme-trigger { width: 2.25rem; padding: 0; }
 
-.theme-trigger .icon { display: none; width: 18px; height: 18px; }
+.theme-trigger .icon { display: none; width: 1.125rem; height: 1.125rem; }
 
 [data-theme-pref="light"]  .theme-trigger .icon-sun,
 [data-theme-pref="dark"]   .theme-trigger .icon-moon,
@@ -270,11 +277,11 @@ header {
 
 .theme-menu {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 0.5rem);
     right: 0;
     z-index: 200;
-    min-width: 152px;
-    padding: 6px;
+    min-width: 9.5rem;
+    padding: 0.375rem;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -286,9 +293,9 @@ header {
 .theme-option {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
     width: 100%;
-    padding: 8px 10px;
+    padding: 0.5rem 0.625rem;
     background: none;
     border: 0;
     border-radius: var(--radius-sm);
@@ -300,7 +307,7 @@ header {
 
 .theme-option:focus-visible { background-color: var(--bg-light); outline-offset: -2px; }
 .theme-option[aria-checked="true"] { color: var(--title-color); font-weight: 600; }
-.theme-option .icon { width: 16px; height: 16px; flex-shrink: 0; }
+.theme-option .icon { width: 1rem; height: 1rem; flex-shrink: 0; }
 
 
 /* ========== 8. Home ========== */
@@ -314,16 +321,16 @@ header {
 
 .hero-lead {
     max-width: 36rem;
-    margin-bottom: 40px;
+    margin-bottom: 2.5rem;
     font-size: var(--fs-xl);
     line-height: 1.6;
     opacity: 0.85;
 }
 
-.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 
 .hero-tech-title {
-    margin: 72px 0 16px;
+    margin: 4.5rem 0 1rem;
     font-family: var(--font-code);
     font-size: var(--fs-xs);
     letter-spacing: 0.08em;
@@ -331,15 +338,15 @@ header {
     color: var(--text-muted);
 }
 
-.tech-stack { display: flex; flex-wrap: wrap; gap: 16px; }
+.tech-stack { display: flex; flex-wrap: wrap; gap: 1rem; }
 
 .tech-box {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 100px;
-    height: 100px;
+    width: 6.25rem;
+    height: 6.25rem;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -349,9 +356,9 @@ header {
 }
 
 .tech-box .iconify {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 12px;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 0.75rem;
     color: currentColor;
 }
 
@@ -367,14 +374,14 @@ header {
 .grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 32px;
-    margin-top: 40px;
+    gap: 2rem;
+    margin-top: 2.5rem;
 }
 
 .article-item,
 .project-item {
     display: block;
-    padding: 32px;
+    padding: 2rem;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -385,13 +392,13 @@ header {
 
 .article-item h3,
 .project-item h3 {
-    margin-bottom: 8px;
+    margin-bottom: 0.5rem;
     font-size: var(--fs-lg);
     line-height: 1.4;
 }
 
 .article-meta {
-    margin-bottom: 12px;
+    margin-bottom: 0.75rem;
     font-family: var(--font-code);
     font-size: var(--fs-xs);
     color: var(--text-muted);
@@ -407,15 +414,15 @@ header {
 .contact-channels {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-    margin-top: 40px;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
 }
 
 .contact-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 24px;
+    padding: 1.5rem;
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
@@ -427,7 +434,7 @@ header {
 
 footer {
     margin-top: auto;
-    padding: 14px 0;
+    padding: 0.875rem 0;
     border-top: 1px solid var(--border-color);
     font-family: var(--font-code);
     font-size: var(--fs-xs);
@@ -446,7 +453,7 @@ footer {
 
 .back-link {
     display: inline-block;
-    margin-bottom: 24px;
+    margin-bottom: 1.5rem;
     font-family: var(--font-code);
     font-size: var(--fs-sm);
     font-weight: 500;
@@ -455,13 +462,13 @@ footer {
 }
 
 .article-header {
-    margin-bottom: 40px;
-    padding-bottom: 28px;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.75rem;
     border-bottom: 1px solid var(--border-color);
     text-align: center;
 }
 
-.article-header .tech-tag { display: inline-block; margin-bottom: 16px; }
+.article-header .tech-tag { display: inline-block; margin-bottom: 1rem; }
 .article-header h1 { margin-bottom: 0; }
 
 .article-body h2 { margin: 2em 0 0.7em; }
@@ -496,7 +503,7 @@ footer {
 
 .article-body blockquote {
     margin: 2em 0;
-    padding: 16px 20px;
+    padding: 1rem 1.25rem;
     background-color: var(--bg-light);
     border-left: 4px solid var(--primary-color);
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
@@ -505,7 +512,7 @@ footer {
 }
 
 .divider {
-    margin: 48px 0;
+    margin: 3rem 0;
     border: 0;
     border-top: 1px solid var(--border-color);
 }
@@ -516,10 +523,10 @@ footer {
 
 .copy-btn {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 0.75rem;
+    right: 0.75rem;
     z-index: 10;
-    padding: 6px 12px;
+    padding: 0.375rem 0.75rem;
     background-color: #27272a;
     color: #f4f4f5;
     border: 1px solid #3f3f46;
@@ -532,7 +539,7 @@ footer {
 
 .article-body pre {
     margin: 0;
-    padding: 56px 24px 24px;
+    padding: 3.5rem 1.5rem 1.5rem;
     background-color: var(--code-bg);
     color: var(--code-fg);
     border: 1px solid var(--code-border);
@@ -546,7 +553,7 @@ footer {
 
 .article-body p code,
 .article-body li code {
-    padding: 2px 6px;
+    padding: 0.125rem 0.375rem;
     background-color: var(--bg-light);
     color: var(--title-color);
     border: 1px solid var(--border-color);
@@ -560,7 +567,7 @@ footer {
 
 .figure-box {
     max-width: 100%;
-    padding: 40px;
+    padding: 2.5rem;
     border: 1px dashed var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
@@ -569,7 +576,7 @@ footer {
 }
 
 .figure-box img {
-    margin: 0 0 20px;
+    margin: 0 0 1.25rem;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     cursor: zoom-in;
@@ -687,36 +694,58 @@ footer {
 }
 
 
-/* ========== 14. Responsivo e movimento reduzido ========== */
+/* ========== 14. Responsivo ========== */
+
+/* --- Telas grandes: a raiz cresce em % e o container acompanha ---
+   Para ajustar: mude o % do html (tamanho de tudo) e o --container
+   (largura do conteúdo, em rem). */
+@media (min-width: 1600px) {
+    html { font-size: 112.5%; }      /* 18px */
+    :root { --container: 75rem; }    /* 1350px */
+}
+
+@media (min-width: 1920px) {         /* monitor de 24" Full HD */
+    html { font-size: 125%; }        /* 20px */
+    :root { --container: 80rem; }    /* 1600px */
+}
+
+@media (min-width: 2560px) {
+    html { font-size: 150%; }        /* 24px */
+    :root { --container: 85rem; }    /* 2040px */
+}
+
+/* --- Tablet --- */
 @media (max-width: 1024px) {
     .article-list,
     .grid,
     .contact-channels {
         grid-template-columns: 1fr;
-        gap: 24px;
+        gap: 1.5rem;
     }
 }
 
+/* --- Celular --- */
 @media (max-width: 768px) {
     :root {
+        --gutter: 1.5rem;    /* 24px de margem lateral */
+
         --fs-lg: 1.0625rem;  /* 17px */
         --fs-xl: 1.125rem;   /* 18px */
         --fs-2xl: 1.375rem;  /* 22px */
         --fs-3xl: 1.875rem;  /* 30px */
     }
 
-    .container { padding: 0 20px; }
-    .main-content { padding-block: 40px; }
+    .main-content { padding-block: 2.5rem; }
 
-    /* Navegação */
-    .nav-right { gap: 12px; }
+    /* Barra superior */
+    .nav-right { gap: 0.75rem; }
 
     .menu-toggle {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        width: 2.25rem;
+        height: 2.25rem;
         padding: 0;
         background: none;
         border: 0;
@@ -724,17 +753,18 @@ footer {
         cursor: pointer;
     }
 
-    .menu-toggle .iconify { width: 24px; height: 24px; }
+    .menu-toggle .iconify { width: 1.5rem; height: 1.5rem; }
 
+    /* Painel do menu: mesma margem lateral do logo */
     .nav-links {
         display: none;
         flex-direction: column;
-        gap: 16px;
+        gap: 1rem;
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
-        padding: 20px;
+        padding: 1.25rem var(--gutter);
         background-color: var(--bg-color);
         border-bottom: 1px solid var(--border-color);
         box-shadow: var(--shadow-md);
@@ -745,31 +775,51 @@ footer {
     /* Cards */
     .article-item,
     .project-item,
-    .contact-item { padding: 20px; }
+    .contact-item { padding: 1.25rem; }
 
     .article-list,
     .grid,
-    .contact-channels { gap: 16px; }
+    .contact-channels { gap: 1rem; }
 
     /* Tecnologias */
-    .tech-box { width: 80px; height: 80px; }
-    .tech-box .iconify { width: 24px; height: 24px; margin-bottom: 8px; }
+    .tech-box { width: 5rem; height: 5rem; }
+    .tech-box .iconify { width: 1.5rem; height: 1.5rem; margin-bottom: 0.5rem; }
 
     /* Artigo */
-    .article-header { margin-bottom: 32px; padding-bottom: 24px; }
+    .article-header { margin-bottom: 2rem; padding-bottom: 1.5rem; }
     .article-body h2 { margin: 1.75em 0 0.6em; }
     .article-body h3 { margin: 1.5em 0 0.5em; }
-    .article-body blockquote { margin: 1.5em 0; padding: 16px; }
+    .article-body blockquote { margin: 1.5em 0; padding: 1rem; }
 
     .code-wrapper { margin: 1.5em 0; }
-    .copy-btn { top: 8px; right: 8px; padding: 4px 8px; }
-    .article-body pre { padding: 48px 16px 16px; }
+    .copy-btn { top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.5rem; }
+    .article-body pre { padding: 3rem 1rem 1rem; }
 
-    .figure-box { padding: 16px; }
+    .figure-box { padding: 1rem; }
 
     /* Modal */
     .modal-content { max-width: 95%; }
     .close-modal { top: 10px; right: 20px; }
+}
+
+/* --- Celular pequeno: barra compacta para caber logo + 3 botões --- */
+@media (max-width: 480px) {
+    .nav-right { gap: 0.625rem; }
+
+    .logo { font-size: var(--fs-sm); }
+
+    /* botão PT / EN (o gatilho de tema continua quadrado) */
+    .theme-btn:not(.theme-trigger) {
+        padding: 0 0.625rem;
+        font-size: var(--fs-xs);
+    }
+}
+
+@media (max-width: 360px) {
+    :root { --gutter: 1rem; }
+
+    .navbar { gap: 0.5rem; }
+    .nav-right { gap: 0.375rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
