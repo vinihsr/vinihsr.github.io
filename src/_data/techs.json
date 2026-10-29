@@ -3,5 +3,7 @@
   { "icon": "simple-icons:postgresql", "name": "PostgreSQL" },
   { "icon": "simple-icons:microsoftazure", "name": "Azure" },
   { "icon": "simple-icons:amazonaws", "name": "AWS" },
-  { "icon": "simple-icons:databricks", "name": "Databricks" }
+  { "icon": "simple-icons:databricks", "name": "Databricks" },
+  { "icon": "simple-icons:linux", "name": "Linux" },
+  { "icon": "simple-icons:windows", "name": "Windows" }
 ]
